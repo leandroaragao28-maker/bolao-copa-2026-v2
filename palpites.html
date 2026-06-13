@@ -202,7 +202,7 @@ function jogoPorId(id) { return jogos.find(j => j.id === id); }
 // Rodapé de acerto para jogos já disputados (resultado conhecido)
 function resultadoHTML(j) {
   const res = RESULTS_MM[j.id];
-  if (!res) return '';
+  if (!res || !palpiteEncerrado(j)) return ''; // só mostra o resultado depois que o jogo fecha
   const pal = palpitesSalvos[j.id];
   let seu = '<span class="res-n">você não palpitou</span>', total = 0;
   if (pal) {
@@ -227,8 +227,8 @@ function resultadoHTML(j) {
 function renderAvanca(id) {
   const el = document.getElementById('avanca_' + id);
   if (!el) return;
-  if (RESULTS_MM[id]) { el.innerHTML = ''; return; } // resultado já exibido no rodapé do card
   const j = jogoPorId(id);
+  if (palpiteEncerrado(j)) { el.innerHTML = ''; return; } // jogo fechado: o rodapé de resultado cuida disso
   const p = palpites[id] || {};
   const travado = palpiteEncerrado(j);
   if (!temPalpite(id)) { el.innerHTML = ''; return; }
