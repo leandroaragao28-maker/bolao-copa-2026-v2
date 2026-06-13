@@ -14,9 +14,11 @@ Sistema web do bolão da Copa 2026, **versão 2** — foca na **fase eliminatór
 
 | Camada | O que prevê | Trava | Pontos |
 |---|---|---|---|
-| **1 — Classificação dos grupos** | 1º/2º/3º de cada grupo + 8 melhores terceiros | Antes da 3ª rodada (≈23/jun) | 5 (1º exato), 5 (2º exato), 3 (avança c/ posição errada), 2 (terceiro certo) |
-| **2 — Quem avança** | Vencedor de cada confronto do mata-mata | **Por fase** (antes do 1º jogo da fase) | 2 / 4 / 6 / 10 / 15 (campeão) |
+| **1 — Classificação dos grupos** | 1º/2º de cada grupo + 8 melhores terceiros | Antes da 3ª rodada (≈23/jun) | 5 (1º exato), 5 (2º exato), 3 (avança c/ posição errada), 2 (terceiro certo) |
+| **2 — Quem avança** | Vencedor de cada jogo do mata-mata (sai do placar; empate = você escolhe) | Por jogo (5 min antes do apito) | 2 / 4 / 6 / 10 / 15 (campeão) |
 | **3 — Placares do mata-mata** | Placar de cada jogo eliminatório | Por jogo (5 min antes do apito) | 15 / 10 / 7,5 / 5 |
+
+> No mata-mata, as Camadas 2 e 3 são palpitadas **juntas, num único input por jogo**: você dá o placar e o vencedor sai dele (empate → você escolhe quem avança).
 
 **Ranking final = Camada 1 + Camada 2 + Camada 3.** Desempate (em ordem): placares exatos → campeão → fases finais (semis+final) → posições exatas nos grupos → palpite de gols da final → inscrição mais antiga.
 
@@ -29,9 +31,8 @@ Sistema web do bolão da Copa 2026, **versão 2** — foca na **fase eliminatór
 | `login.html` | Login por e-mail/senha + recuperação de senha (código por e-mail) |
 | `cadastro.html` | Cadastro com senha + pagamento Pix (R$ 100) |
 | `index.html` | Hub: atalhos das 3 camadas + prévia do ranking |
-| `classificacao-grupos.html` | **Camada 1** |
-| `bracket.html` | **Camada 2** + palpite de gols da final |
-| `palpites.html` | **Camada 3** |
+| `classificacao-grupos.html` | **Camada 1** (1º/2º + 8 terceiros) |
+| `palpites.html` | **Mata-mata** (Camadas 2+3 juntas: placar → vencedor automático; empate → escolher) + gols da final |
 | `jogos.html` | Próximos jogos + tabela dos grupos + chaveamento |
 | `ranking.html` | Ranking somando as camadas |
 | `minha-pontuacao.html` | Detalhamento por camada |

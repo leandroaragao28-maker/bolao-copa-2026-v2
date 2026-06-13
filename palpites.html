@@ -4,21 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1A237E">
-  <title>Placares do mata-mata — Camada 3</title>
+  <title>Palpites do Mata-mata</title>
   <link rel="stylesheet" href="style.css">
   <script src="config.js"></script>
+  <style>
+    .placar-col { text-align: center; }
+    .avanca { margin-top: .35rem; font-size: .68rem; font-weight: 800; }
+    .avanca.ok { color: var(--verde); }
+    .avanca.tie { color: var(--ouro-escuro); }
+    .av-btns { display: flex; gap: .3rem; justify-content: center; margin-top: .25rem; }
+    .av-btn { border: 2px solid var(--cinza-borda); background: var(--branco); border-radius: 6px; padding: .2rem .5rem; font-size: .68rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: .25rem; }
+    .av-btn .bd { font-size: .95rem; }
+    .av-btn.sel { border-color: var(--azul); background: var(--azul); color: #fff; }
+  </style>
 </head>
 <body>
 
 <header>
   <span class="logo">⚽</span>
-  <div class="header-texto">
-    <h1>Camada 3 · Placares</h1>
-    <p>Mata-mata</p>
-  </div>
+  <div class="header-texto"><h1>Palpites · Mata-mata</h1><p id="hdrFase">Placar + quem avança</p></div>
   <nav>
     <a href="index.html">Início</a>
-    <a href="bracket.html">Bracket</a>
+    <a href="jogos.html">Jogos</a>
     <a href="regulamento.html">Regras</a>
   </nav>
 </header>
@@ -28,14 +35,28 @@
 <div class="container">
 
   <div class="banner-info">
-    Crave os placares do mata-mata. Pontos: <strong>15</strong> exato · <strong>10</strong> placar do vencedor ·
-    <strong>7,5</strong> empate (1 lado) · <strong>5</strong> placar do perdedor. Trava 5 min antes do apito.
+    Digite o <strong>placar</strong> de cada jogo — o vencedor já aparece. Em caso de <strong>empate</strong>, escolha quem avança.
+    Pontos: acerto de quem avança (2→15) + placar (15/10/7,5/5). Cada jogo trava 5 min antes do apito.
   </div>
 
   <div id="bannerPagamento" class="banner-pagamento" style="display:none;">
     <span>⏳ <strong>Pagamento pendente.</strong> Palpites contam após a confirmação.</span>
     <a href="cadastro.html?pagar=1">💳 Pagar</a>
   </div>
+
+  <!-- Gols da final (desempate) -->
+  <div class="card" id="cardGols" style="display:none;">
+    <p class="card-titulo">🎯 Palpite: total de gols da FINAL</p>
+    <p class="form-hint" style="margin-bottom:.6rem;">Critério de desempate. Editável até o início do mata-mata. <span id="golsTrava"></span></p>
+    <div style="display:flex;gap:.6rem;align-items:center;">
+      <input type="number" id="golsFinal" min="0" max="20" placeholder="ex: 3" inputmode="numeric"
+             style="flex:1;padding:.7rem;border:2px solid var(--cinza-borda);border-radius:8px;font-size:1.1rem;font-weight:800;text-align:center;">
+      <button class="btn btn-secondary" id="btnGols" onclick="salvarGols()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Seletor de fase -->
+  <div class="seg" id="segFases" style="display:none;"></div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap;">
     <span id="contador" style="font-size:.8rem;color:var(--cinza-sub);font-weight:700;"></span>
@@ -49,13 +70,19 @@
 <script>
 let perfil = null;
 let jogos = [];
-const palpites = {};        // editados nesta sessão
-const palpitesSalvos = {};  // já no servidor
+let faseFiltro = 'todas';
+let golsTravado = false;
+const palpites = {};        // {id:{jogoId,gols1,gols2,vencedor}}
+const palpitesSalvos = {};  // do servidor
 
 async function init() {
   perfil = await exigirLogin();
   if (!perfil) return;
   if (perfil.status !== 'APROVADO') document.getElementById('bannerPagamento').style.display = 'flex';
+
+  const params = new URLSearchParams(location.search);
+  const f = params.get('fase');
+  if (f && FASES_INFO[f]) faseFiltro = f;
 
   const [rmm, rp] = await Promise.all([
     api({ action: 'getJogosMataMata' }),
@@ -63,73 +90,154 @@ async function init() {
   ]);
   if (!rmm.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
   jogos = rmm.jogos;
-  if (rp.ok && rp.palpites) rp.palpites.forEach(p => palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2 });
+  if (rp.ok && rp.palpites) rp.palpites.forEach(p => palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2, vencedor: p.vencedor });
 
+  // gols da final
+  if (jogos.length) {
+    document.getElementById('cardGols').style.display = '';
+    const gv = rp.ok ? rp.golsFinalPalpite : perfil.golsFinalPalpite;
+    if (gv !== '' && gv != null) document.getElementById('golsFinal').value = gv;
+    const primeiro = jogos.slice().sort((a, b) => horarioJogo(a) - horarioJogo(b))[0];
+    golsTravado = Date.now() >= prazoLimite(primeiro);
+    if (golsTravado) { document.getElementById('golsFinal').disabled = true; document.getElementById('btnGols').disabled = true; document.getElementById('golsTrava').textContent = '🔒 Encerrado.'; }
+  }
+
+  renderSeg();
   render();
 }
 
+function fasesComJogos() { return FASES_ORDEM.filter(f => jogos.some(j => j.fase === f)); }
+
+function renderSeg() {
+  const fases = fasesComJogos();
+  const seg = document.getElementById('segFases');
+  if (fases.length <= 1) { seg.style.display = 'none'; return; }
+  seg.style.display = '';
+  // 3º lugar + final juntos no último botão
+  const grupos = [];
+  fases.forEach(f => {
+    if (f === 'final') return; // tratado junto com 3lugar
+    if (f === '3lugar') { grupos.push({ key: 'finais', label: '3º e Final' }); return; }
+    grupos.push({ key: f, label: FASES_INFO[f].curto });
+  });
+  if (fases.indexOf('final') >= 0 && fases.indexOf('3lugar') < 0) grupos.push({ key: 'final', label: 'Final' });
+  let botoes = `<button class="${faseFiltro === 'todas' ? 'ativo' : ''}" onclick="setFase('todas')">Todas</button>`;
+  botoes += grupos.map(g => `<button class="${faseFiltro === g.key ? 'ativo' : ''}" onclick="setFase('${g.key}')">${g.label}</button>`).join('');
+  seg.innerHTML = botoes;
+}
+
+function setFase(f) { faseFiltro = f; renderSeg(); render(); }
+
+function fasesDoFiltro() {
+  if (faseFiltro === 'todas') return fasesComJogos();
+  if (faseFiltro === 'finais') return ['3lugar', 'final'];
+  return [faseFiltro];
+}
+
 function render() {
+  document.getElementById('hdrFase').textContent = faseFiltro === 'todas' ? 'Placar + quem avança' : (faseFiltro === 'finais' ? '3º lugar e Final' : FASES_INFO[faseFiltro].label);
   const cont = document.getElementById('lista');
   if (!jogos.length) {
     cont.innerHTML = '<div class="card"><div class="vazio">⏳ Nenhum jogo do mata-mata definido ainda.<br>Os confrontos aparecem aqui conforme as fases saem.</div></div>';
     return;
   }
   cont.innerHTML = '';
-  const porFase = {};
-  jogos.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
-
   let travados = 0;
-  FASES_ORDEM.forEach(fase => {
-    const lista = porFase[fase];
-    if (!lista || !lista.length) return;
+  fasesDoFiltro().forEach(fase => {
+    const lista = jogos.filter(j => j.fase === fase);
+    if (!lista.length) return;
     cont.insertAdjacentHTML('beforeend', `<span class="grupo-titulo">${FASES_INFO[fase].label}</span>`);
     lista.forEach(j => {
       const travado = palpiteEncerrado(j);
       if (travado) travados++;
       const salvo = palpitesSalvos[j.id];
-      if (salvo) palpites[j.id] = { jogoId: j.id, gols1: salvo.gols1, gols2: salvo.gols2 };
-      const v1 = salvo ? salvo.gols1 : '', v2 = salvo ? salvo.gols2 : '';
+      if (salvo && !palpites[j.id]) palpites[j.id] = { jogoId: j.id, gols1: salvo.gols1, gols2: salvo.gols2, vencedor: salvo.vencedor };
+      const p = palpites[j.id] || {};
+      const v1 = (p.gols1 ?? '') === '' ? '' : p.gols1, v2 = (p.gols2 ?? '') === '' ? '' : p.gols2;
       const card = document.createElement('div');
-      card.className = 'jogo-card' + (travado ? ' travado' : '') + (salvo ? ' tem-palpite' : '');
+      card.className = 'jogo-card' + (travado ? ' travado' : '') + (temPalpite(j.id) ? ' tem-palpite' : '');
       card.id = 'card_' + j.id;
       card.innerHTML = `
         <div class="time"><span class="bandeira">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
-        <div style="text-align:center;">
+        <div class="placar-col">
           <div class="jogo-meta">${fmtDiaMes(j.data)} ${j.hora}</div>
           <div class="jogo-timer" id="timer_${j.id}"></div>
-          <div class="placar-inputs" style="flex-direction:row;margin-top:.3rem;">
+          <div class="placar-inputs" style="flex-direction:row;margin-top:.3rem;justify-content:center;">
             <input type="number" min="0" max="30" id="g1_${j.id}" value="${v1}" placeholder="?" inputmode="numeric" ${travado ? 'disabled' : `oninput="reg('${j.id}')"`}>
             <span class="placar-sep">×</span>
             <input type="number" min="0" max="30" id="g2_${j.id}" value="${v2}" placeholder="?" inputmode="numeric" ${travado ? 'disabled' : `oninput="reg('${j.id}')"`}>
           </div>
-          ${salvo ? `<div class="palpite-salvo${travado ? ' travado-txt' : ''}">✓ salvo: ${salvo.gols1} × ${salvo.gols2}</div>` : ''}
+          <div class="avanca-row" id="avanca_${j.id}"></div>
         </div>
         <div class="time time-direita"><span>${nomeTime(j.time2)}</span><span class="bandeira">${bandeira(j.time2)}</span></div>`;
       cont.appendChild(card);
+      renderAvanca(j.id);
     });
   });
-
-  if (travados > 0) document.getElementById('travasInfo').textContent = `🔒 ${travados} jogo(s) encerrado(s)`;
+  document.getElementById('travasInfo').textContent = travados > 0 ? `🔒 ${travados} jogo(s) encerrado(s)` : '';
   atualizarContador();
   aplicarTwemoji(cont);
   iniciarTimers();
 }
 
+function temPalpite(id) { const p = palpites[id]; return p && p.gols1 !== '' && p.gols1 != null && p.gols2 !== '' && p.gols2 != null; }
+
+function jogoPorId(id) { return jogos.find(j => j.id === id); }
+
+function renderAvanca(id) {
+  const el = document.getElementById('avanca_' + id);
+  if (!el) return;
+  const j = jogoPorId(id);
+  const p = palpites[id] || {};
+  const travado = palpiteEncerrado(j);
+  if (!temPalpite(id)) { el.innerHTML = ''; return; }
+  const g1 = parseInt(p.gols1), g2 = parseInt(p.gols2);
+  if (g1 !== g2) {
+    const venc = g1 > g2 ? j.time1 : j.time2;
+    el.className = 'avanca ok'; el.innerHTML = `✔ Avança: <b>${nomeTime(venc)}</b>`;
+  } else {
+    const sel = p.vencedor;
+    el.className = 'avanca tie';
+    el.innerHTML = `Empate — quem avança?
+      <div class="av-btns">
+        <span class="av-btn ${sel === j.time1 ? 'sel' : ''}" ${travado ? '' : `onclick="escolherVencedor('${id}','${j.time1}')"`}><span class="bd">${bandeira(j.time1)}</span>${nomeTime(j.time1)}</span>
+        <span class="av-btn ${sel === j.time2 ? 'sel' : ''}" ${travado ? '' : `onclick="escolherVencedor('${id}','${j.time2}')"`}><span class="bd">${bandeira(j.time2)}</span>${nomeTime(j.time2)}</span>
+      </div>`;
+    aplicarTwemoji(el);
+  }
+}
+
 function reg(id) {
   const g1 = document.getElementById('g1_' + id).value;
   const g2 = document.getElementById('g2_' + id).value;
-  const card = document.getElementById('card_' + id);
-  if (g1 !== '' && g2 !== '') { palpites[id] = { jogoId: id, gols1: parseInt(g1), gols2: parseInt(g2) }; card.classList.add('tem-palpite'); }
-  else { delete palpites[id]; card.classList.remove('tem-palpite'); }
+  const j = jogoPorId(id);
+  if (g1 !== '' && g2 !== '') {
+    const a = parseInt(g1), b = parseInt(g2);
+    let venc = (palpites[id] || {}).vencedor || '';
+    if (a > b) venc = j.time1; else if (b > a) venc = j.time2; // empate mantém escolha anterior (ou vazio)
+    palpites[id] = { jogoId: id, gols1: a, gols2: b, vencedor: venc };
+  } else {
+    delete palpites[id];
+  }
+  document.getElementById('card_' + id).classList.toggle('tem-palpite', temPalpite(id));
+  renderAvanca(id);
+  atualizarContador();
+}
+
+function escolherVencedor(id, time) {
+  if (!palpites[id]) return;
+  palpites[id].vencedor = time;
+  renderAvanca(id);
   atualizarContador();
 }
 
 function atualizarContador() {
   const total = jogos.length;
-  const preenchidos = Object.keys(palpites).length;
+  const preenchidos = Object.keys(palpites).filter(id => temPalpite(id)).length;
   const novos = Object.keys(palpites).filter(id => {
+    if (!temPalpite(id)) return false;
     const s = palpitesSalvos[id], p = palpites[id];
-    return !s || s.gols1 !== p.gols1 || s.gols2 !== p.gols2;
+    return !s || s.gols1 !== p.gols1 || s.gols2 !== p.gols2 || (s.vencedor || '') !== (p.vencedor || '');
   }).length;
   document.getElementById('contador').textContent = `${preenchidos} de ${total} jogos preenchidos`;
   const fab = document.getElementById('fab');
@@ -138,25 +246,29 @@ function atualizarContador() {
 }
 
 async function salvarTudo() {
-  const lista = Object.values(palpites).filter(p => { const j = jogos.find(x => x.id == p.jogoId); return j && !palpiteEncerrado(j); });
+  const lista = Object.values(palpites).filter(p => { const j = jogoPorId(p.jogoId); return j && temPalpite(p.jogoId) && !palpiteEncerrado(j); });
   if (!lista.length) { toast('Nenhum palpite novo para salvar.', 'aviso'); return; }
+  const empatesSemEscolha = lista.filter(p => parseInt(p.gols1) === parseInt(p.gols2) && !p.vencedor);
   const fab = document.getElementById('fab');
   fab.disabled = true; fab.innerHTML = 'Salvando…';
   const res = await api({ action: 'salvarPalpitesMataMata', token: getToken(), palpites: lista });
   fab.disabled = false; fab.innerHTML = '💾 Salvar <span class="fab-count" id="fabCount">0</span>';
   if (res.ok) {
-    lista.forEach(p => {
-      palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2 };
-      const card = document.getElementById('card_' + p.jogoId);
-      if (!card) return;
-      const sd = card.querySelector('.palpite-salvo');
-      const txt = `✓ salvo: ${p.gols1} × ${p.gols2}`;
-      if (sd) sd.textContent = txt;
-      else { const c = card.querySelector('[style*="text-align:center"]'); if (c) c.insertAdjacentHTML('beforeend', `<div class="palpite-salvo">${txt}</div>`); }
-    });
+    lista.forEach(p => { palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2, vencedor: p.vencedor }; });
     atualizarContador();
-    toast(res.msg, 'ok');
+    if (empatesSemEscolha.length) toast(`Salvo! Mas ${empatesSemEscolha.length} empate(s) sem escolher quem avança.`, 'aviso');
+    else toast(res.msg, 'ok');
   } else toast(res.msg || 'Erro ao salvar.', 'erro');
+}
+
+async function salvarGols() {
+  const gols = document.getElementById('golsFinal').value;
+  if (gols === '') { toast('Informe um número de gols.', 'erro'); return; }
+  const btn = document.getElementById('btnGols');
+  btn.disabled = true; btn.textContent = '…';
+  const res = await api({ action: 'salvarGolsFinal', token: getToken(), gols });
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (res.ok) toast(res.msg, 'ok'); else toast(res.msg || 'Erro.', 'erro');
 }
 
 // Timers
@@ -172,6 +284,7 @@ function atualizarTimers() {
       if (card && !card.classList.contains('travado')) {
         card.classList.add('travado');
         ['g1_','g2_'].forEach(p => { const i = document.getElementById(p + j.id); if (i) { i.disabled = true; i.removeAttribute('oninput'); } });
+        renderAvanca(j.id);
       }
       el.className = 'jogo-timer encerrado'; el.textContent = '🔒 encerrado'; return;
     }

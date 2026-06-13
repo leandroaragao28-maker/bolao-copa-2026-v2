@@ -239,12 +239,13 @@ function _aba(nome, cabecalho) {
 }
 
 const COLS_PART = ['ID','Nome','Email','Whatsapp','Salt','Hash','Status','DataInscricao','DataPagamento','GolsFinalPalpite','IsAdmin','Token','ResetCode','ResetExpira'];
+// Palpites do mata-mata: placar + vencedor (Camadas 2 e 3 unificadas num input por jogo)
+const COLS_PMM = ['ParticipanteID','JogoID','Gols1','Gols2','Vencedor','DataRegistro'];
 
 function inicializar() {
   _aba('Participantes',      COLS_PART);
   _aba('PalpitesGrupos',     ['ParticipanteID','Dados','DataRegistro']);
-  _aba('Bracket',            ['ParticipanteID','Dados','DataRegistro']);
-  _aba('PalpitesMataMata',   ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+  _aba('PalpitesMataMata',   COLS_PMM);
   _aba('JogosMataMata',      ['JogoID','Fase','Data','Hora','Time1','Time2','Ordem','DataCriacao']);
   _aba('ResultadosGrupos',   ['JogoID','Gols1','Gols2','DataRegistro']);
   _aba('ResultadosMataMata', ['JogoID','Gols1','Gols2','Vencedor','DataRegistro']);
@@ -287,8 +288,6 @@ function doPost(e) {
     else if (a === 'salvarPalpiteGrupos')      resultado = salvarPalpiteGrupos(body);
     else if (a === 'getPalpiteGrupos')         resultado = getPalpiteGrupos(body.token);
     // ── Camada 2 ──
-    else if (a === 'salvarBracket')            resultado = salvarBracket(body);
-    else if (a === 'getBracket')               resultado = getBracket(body.token);
     else if (a === 'salvarGolsFinal')          resultado = salvarGolsFinal(body);
     // ── Camada 3 ──
     else if (a === 'salvarPalpitesMataMata')   resultado = salvarPalpitesMataMata(body);
@@ -666,7 +665,7 @@ function gerarChaveamento(body) {
 }
 
 function _pontosCamada1(palp, classif) {
-  // palp = { grupos: {A:{pos1,pos2,pos3},...}, terceiros:[...] }
+  // palp = { grupos: {A:{pos1,pos2},...}, terceiros:[...] }
   let pontos = 0, posExatas = 0;
   const det = { porGrupo: {}, terceiros: [] };
   if (!palp || !palp.grupos) return { pontos: 0, posExatas: 0, det };
@@ -704,7 +703,8 @@ function _pontosCamada1(palp, classif) {
 }
 
 // ════════════════════════════════════════════════════════════
-// CAMADA 2 — Bracket (quem avança) + gols da final
+// MATA-MATA — jogos, travas e gols da final
+// (Camadas 2 e 3 são palpitadas juntas: ver salvarPalpitesMataMata)
 // ════════════════════════════════════════════════════════════
 function _jogosMataMata() {
   const aba = _aba('JogosMataMata', ['JogoID','Fase','Data','Hora','Time1','Time2','Ordem','DataCriacao']);
@@ -742,58 +742,6 @@ function getTravaGolsFinal() {
   let menor = Infinity;
   jogos.forEach(j => { menor = Math.min(menor, _kickoff(j.data, j.hora)); });
   return menor - ANTECEDENCIA_MS;
-}
-
-function salvarBracket(body) {
-  const r = _linhaPorToken(body.token);
-  if (!r) return { ok: false, msg: 'Sessão expirada.' };
-  const picks = body.picks || {}; // { jogoId: sigla }
-  const jogos = _jogosMataMata();
-  const travas = _travasPorFase(jogos);
-  const agora = Date.now();
-  const faseDoJogo = {};
-  jogos.forEach(j => faseDoJogo[j.id] = j.fase);
-
-  const aba = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']);
-  const vals = aba.getDataRange().getValues();
-  let atual = {};
-  let linhaExistente = -1;
-  for (let i = 1; i < vals.length; i++) {
-    if (vals[i][0] === r.dados[0]) { try { atual = JSON.parse(vals[i][1]) || {}; } catch (e) {} linhaExistente = i + 1; break; }
-  }
-
-  let aceitos = 0, recusados = 0;
-  Object.keys(picks).forEach(jid => {
-    const fase = faseDoJogo[jid];
-    if (!fase) { recusados++; return; }
-    const travada = travas[fase] != null && agora >= travas[fase];
-    if (travada) { recusados++; return; }
-    atual[jid] = picks[jid];
-    aceitos++;
-  });
-
-  const agoraIso = new Date().toISOString();
-  const json = JSON.stringify(atual);
-  if (linhaExistente > 0) aba.getRange(linhaExistente, 2, 1, 2).setValues([[json, agoraIso]]);
-  else aba.appendRow([r.dados[0], json, agoraIso]);
-
-  let msg = aceitos + ' palpite(s) salvos.';
-  if (recusados > 0) msg += ' ' + recusados + ' ignorado(s) (fase já travada).';
-  return { ok: true, msg };
-}
-
-function getBracket(token) {
-  const r = _linhaPorToken(token);
-  if (!r) return { ok: false, msg: 'Sessão expirada.' };
-  const aba = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']);
-  const vals = aba.getDataRange().getValues();
-  for (let i = 1; i < vals.length; i++) {
-    if (vals[i][0] === r.dados[0]) {
-      let d = {}; try { d = JSON.parse(vals[i][1]) || {}; } catch (e) {}
-      return { ok: true, picks: d, golsFinalPalpite: r.dados[9] };
-    }
-  }
-  return { ok: true, picks: {}, golsFinalPalpite: r.dados[9] };
 }
 
 function salvarGolsFinal(body) {
@@ -835,13 +783,20 @@ function salvarPalpitesMataMata(body) {
   const validos = palpites.filter(p => abertos.has(String(p.jogoId)));
   const recusados = palpites.length - validos.length;
 
-  const aba = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+  const aba = _aba('PalpitesMataMata', COLS_PMM);
   const vals = aba.getDataRange().getValues();
   for (let i = vals.length - 1; i >= 1; i--) {
     if (vals[i][0] === r.dados[0] && abertos.has(String(vals[i][1]))) aba.deleteRow(i + 1);
   }
   const agora = new Date().toISOString();
-  validos.forEach(p => aba.appendRow([r.dados[0], String(p.jogoId), p.gols1, p.gols2, agora]));
+  validos.forEach(p => {
+    const j = mapJogos[String(p.jogoId)];
+    const g1 = parseInt(p.gols1), g2 = parseInt(p.gols2);
+    let venc = p.vencedor || '';
+    // Vencedor automático pelo placar; empate sem escolha fica vazio (Camada 2 não pontua, Camada 3 sim)
+    if (!venc && j) { if (g1 > g2) venc = j.time1; else if (g2 > g1) venc = j.time2; }
+    aba.appendRow([r.dados[0], String(p.jogoId), p.gols1, p.gols2, venc, agora]);
+  });
 
   let msg = 'Palpites salvos com sucesso!';
   if (recusados > 0) msg = 'Palpites salvos. ' + recusados + ' ignorado(s) (jogo já iniciado).';
@@ -851,13 +806,13 @@ function salvarPalpitesMataMata(body) {
 function getMeusPalpitesMataMata(token) {
   const r = _linhaPorToken(token);
   if (!r) return { ok: false, msg: 'Sessão expirada.' };
-  const aba = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+  const aba = _aba('PalpitesMataMata', COLS_PMM);
   const vals = aba.getDataRange().getValues();
   const lista = [];
   for (let i = 1; i < vals.length; i++) {
-    if (vals[i][0] === r.dados[0]) lista.push({ jogoId: String(vals[i][1]), gols1: vals[i][2], gols2: vals[i][3] });
+    if (vals[i][0] === r.dados[0]) lista.push({ jogoId: String(vals[i][1]), gols1: vals[i][2], gols2: vals[i][3], vencedor: vals[i][4] });
   }
-  return { ok: true, palpites: lista };
+  return { ok: true, palpites: lista, golsFinalPalpite: r.dados[9] };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -929,17 +884,19 @@ function getResultadosMataMataPublico() { return { ok: true, resultados: _mapRes
 // ════════════════════════════════════════════════════════════
 // RANKING — soma das 3 camadas + desempates
 // ════════════════════════════════════════════════════════════
-function _pontuarParticipante(pid, classif, jogosMM, mapResMM, bracket, palpMM, golsFinalPalpite, golsFinalReal) {
+function _pontuarParticipante(pid, classif, jogosMM, mapResMM, palpMM, golsFinalPalpite, golsFinalReal) {
   // Camada 1
   const c1 = _pontosCamada1(classif._palpitesPorPid ? classif._palpitesPorPid[pid] : null, classif);
 
-  // Camada 2 — quem avança
+  const meusPalp = palpMM || {};
+
+  // Camada 2 — quem avança (vencedor vem do próprio palpite do jogo)
   let c2 = 0, c2FasesFinais = 0, acertouCampeao = false;
-  const meuBracket = bracket || {};
   jogosMM.forEach(j => {
     const res = mapResMM[j.id];
     if (!res || !res.vencedor) return;
-    const pick = meuBracket[j.id];
+    const p = meusPalp[j.id];
+    const pick = p ? p.vencedor : null;
     if (!pick) return;
     if (pick === res.vencedor) {
       const pts = FASES[j.fase] ? FASES[j.fase].pontos : 0;
@@ -951,7 +908,6 @@ function _pontuarParticipante(pid, classif, jogosMM, mapResMM, bracket, palpMM, 
 
   // Camada 3 — placares
   let c3 = 0, placaresExatos = 0;
-  const meusPalp = palpMM || {};
   jogosMM.forEach(j => {
     const res = mapResMM[j.id];
     const p = meusPalp[j.id];
@@ -989,23 +945,15 @@ function getRanking() {
   const jogosMM = _jogosMataMata();
   const mapResMM = _mapResultadosMataMata();
 
-  // brackets por pid
-  const abaBr = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']);
-  const brVals = abaBr.getDataRange().getValues();
-  const bracketPorPid = {};
-  for (let i = 1; i < brVals.length; i++) {
-    try { bracketPorPid[brVals[i][0]] = JSON.parse(brVals[i][1]); } catch (e) {}
-  }
-
-  // palpites mata-mata por pid
-  const abaPM = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+  // palpites mata-mata por pid (placar + vencedor)
+  const abaPM = _aba('PalpitesMataMata', COLS_PMM);
   const pmVals = abaPM.getDataRange().getValues();
   const palpMMPorPid = {};
   for (let i = 1; i < pmVals.length; i++) {
     const pid = pmVals[i][0];
     if (!pid) continue;
     if (!palpMMPorPid[pid]) palpMMPorPid[pid] = {};
-    palpMMPorPid[pid][String(pmVals[i][1])] = { gols1: pmVals[i][2], gols2: pmVals[i][3] };
+    palpMMPorPid[pid][String(pmVals[i][1])] = { gols1: pmVals[i][2], gols2: pmVals[i][3], vencedor: pmVals[i][4] };
   }
 
   // gols reais da final
@@ -1025,7 +973,7 @@ function getRanking() {
     if (status === 'APROVADO') totalArrecadado += VALOR_INSCRICAO;
     if (status !== 'APROVADO') continue;
 
-    const p = _pontuarParticipante(pid, classif, jogosMM, mapResMM, bracketPorPid[pid], palpMMPorPid[pid], golsFinalPalpite, golsFinalReal);
+    const p = _pontuarParticipante(pid, classif, jogosMM, mapResMM, palpMMPorPid[pid], golsFinalPalpite, golsFinalReal);
     ranking.push({
       id: pid, nome, dataInscricao,
       c1: p.c1, c2: p.c2, c3: p.c3, pontos: p.total,
@@ -1083,17 +1031,15 @@ function getMinhaPontuacao(token) {
 
   const jogosMM = _jogosMataMata();
   const mapResMM = _mapResultadosMataMata();
-  const br = getBracket(token);
-  const meuBracket = br.ok ? br.picks : {};
   const palpMMres = getMeusPalpitesMataMata(token);
   const meusPalpMM = {};
-  if (palpMMres.ok) palpMMres.palpites.forEach(p => meusPalpMM[p.jogoId] = { gols1: p.gols1, gols2: p.gols2 });
+  if (palpMMres.ok) palpMMres.palpites.forEach(p => meusPalpMM[p.jogoId] = { gols1: p.gols1, gols2: p.gols2, vencedor: p.vencedor });
 
   let c2 = 0, c3 = 0;
   const mmDetalhe = jogosMM.map(j => {
     const res = mapResMM[j.id];
-    const pick = meuBracket[j.id] || null;
     const palp = meusPalpMM[j.id] || null;
+    const pick = palp ? (palp.vencedor || null) : null;
     let ptsAvanca = null, ptsPlacar = null;
     if (res && res.vencedor && pick) { ptsAvanca = (pick === res.vencedor) ? (FASES[j.fase] ? FASES[j.fase].pontos : 0) : 0; if (aprovado) c2 += ptsAvanca; }
     if (res && palp) { ptsPlacar = calcularPontos(palp.gols1, palp.gols2, res.gols1, res.gols2); if (aprovado) c3 += ptsPlacar; }
@@ -1239,16 +1185,10 @@ function getResultadosMataMataAdmin(senha) {
 // Contagens p/ relatórios do admin (quantos preencheram cada camada)
 function getContagens(senha) {
   if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
-  const cont = { grupos: {}, bracket: {}, mataMata: {} };
+  const cont = { grupos: {}, mataMata: {} };
   const pg = _aba('PalpitesGrupos', ['ParticipanteID','Dados','DataRegistro']).getDataRange().getValues();
   for (let i = 1; i < pg.length; i++) if (pg[i][0]) cont.grupos[pg[i][0]] = 1;
-  const br = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']).getDataRange().getValues();
-  for (let i = 1; i < br.length; i++) {
-    if (!br[i][0]) continue;
-    let d = {}; try { d = JSON.parse(br[i][1]) || {}; } catch (e) {}
-    cont.bracket[br[i][0]] = Object.keys(d).length;
-  }
-  const pm = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']).getDataRange().getValues();
+  const pm = _aba('PalpitesMataMata', COLS_PMM).getDataRange().getValues();
   for (let i = 1; i < pm.length; i++) { const pid = pm[i][0]; if (!pid) continue; cont.mataMata[pid] = (cont.mataMata[pid] || 0) + 1; }
   return { ok: true, contagens: cont };
 }
@@ -1269,8 +1209,7 @@ function TESTE_semear() {
   const N = 6;
   const abaP  = _aba('Participantes', COLS_PART);
   const abaPG = _aba('PalpitesGrupos', ['ParticipanteID','Dados','DataRegistro']);
-  const abaBr = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']);
-  const abaPM = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+  const abaPM = _aba('PalpitesMataMata', COLS_PMM);
 
   const grupos = {};
   JOGOS.forEach(j => { if (!grupos[j.grupo]) grupos[j.grupo] = []; [j.time1, j.time2].forEach(t => { if (grupos[j.grupo].indexOf(t) < 0) grupos[j.grupo].push(t); }); });
@@ -1286,21 +1225,20 @@ function TESTE_semear() {
     const golsFinal = Math.floor(Math.random() * 5);
     abaP.appendRow([id, 'Teste ' + k, email, '8899999000' + k, salt, hash, 'APROVADO', agora, agora, golsFinal, '', _novoToken(), '', '']);
 
-    // Camada 1
+    // Camada 1 — só 1º e 2º por grupo; 8 terceiros dentre os times restantes
     const palpG = { grupos: {}, terceiros: [] };
-    const pos3s = [];
-    gkeys.forEach(g => { const ord = _embaralhar(grupos[g]); palpG.grupos[g] = { pos1: ord[0], pos2: ord[1], pos3: ord[2] }; pos3s.push(ord[2]); });
-    palpG.terceiros = _embaralhar(pos3s).slice(0, 8);
+    const restantes = [];
+    gkeys.forEach(g => { const ord = _embaralhar(grupos[g]); palpG.grupos[g] = { pos1: ord[0], pos2: ord[1] }; restantes.push(ord[2], ord[3]); });
+    palpG.terceiros = _embaralhar(restantes).slice(0, 8);
     abaPG.appendRow([id, JSON.stringify(palpG), agora]);
 
-    // Camadas 2 e 3 (se houver confrontos do mata-mata)
+    // Mata-mata (placar + vencedor), se já houver confrontos
     if (jogosMM.length) {
-      const picks = {};
       jogosMM.forEach(j => {
-        picks[j.id] = Math.random() < 0.5 ? j.time1 : j.time2;
-        abaPM.appendRow([id, j.id, Math.floor(Math.random() * 4), Math.floor(Math.random() * 4), agora]);
+        const g1 = Math.floor(Math.random() * 4), g2 = Math.floor(Math.random() * 4);
+        const venc = g1 > g2 ? j.time1 : (g2 > g1 ? j.time2 : (Math.random() < 0.5 ? j.time1 : j.time2));
+        abaPM.appendRow([id, j.id, g1, g2, venc, agora]);
       });
-      abaBr.appendRow([id, JSON.stringify(picks), agora]);
     }
     criados++;
   }

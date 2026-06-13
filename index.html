@@ -72,35 +72,20 @@
     <a href="cadastro.html?pagar=1">💳 Pagar</a>
   </div>
 
-  <!-- 3 camadas -->
+  <!-- Onde palpitar -->
   <div class="sec-titulo">Onde palpitar</div>
 
   <a class="camada-card" href="classificacao-grupos.html">
     <div class="cc-top">
       <span class="cc-emoji">📊</span>
-      <div><div class="cc-tit">Camada 1 · Classificação dos grupos</div><div class="cc-sub">1º, 2º e 3º de cada grupo + 8 terceiros</div></div>
+      <div><div class="cc-tit">Classificação dos grupos</div><div class="cc-sub">1º e 2º de cada grupo + 8 terceiros</div></div>
       <span class="cc-status" id="stC1">…</span>
     </div>
     <div class="cc-desc">Preveja como cada grupo termina. Trava antes da 3ª rodada (23/jun). Vale até <strong>10 pts por grupo</strong> + 2 por terceiro certo.</div>
   </a>
 
-  <a class="camada-card" href="bracket.html">
-    <div class="cc-top">
-      <span class="cc-emoji">🗺️</span>
-      <div><div class="cc-tit">Camada 2 · Quem avança</div><div class="cc-sub">Escolha o vencedor de cada confronto</div></div>
-      <span class="cc-status" id="stC2">…</span>
-    </div>
-    <div class="cc-desc">Acerte quem passa em cada fase. Trava <strong>por fase</strong>. Vale 2 → 4 → 6 → 10 → 15 pts (campeão).</div>
-  </a>
-
-  <a class="camada-card" href="palpites.html">
-    <div class="cc-top">
-      <span class="cc-emoji">⚽</span>
-      <div><div class="cc-tit">Camada 3 · Placares do mata-mata</div><div class="cc-sub">O placar de cada jogo eliminatório</div></div>
-      <span class="cc-status" id="stC3">…</span>
-    </div>
-    <div class="cc-desc">Crave os placares (15 / 10 / 7,5 / 5 pts). Corte por jogo, trava 5 min antes do apito.</div>
-  </a>
+  <!-- Cards por fase do mata-mata (gerados via JS) -->
+  <div id="faseCards"></div>
 
   <!-- Prévia ranking -->
   <div class="mini-rk">
@@ -145,22 +130,37 @@ async function init() {
     setStatus('stC1', aberto, aberto ? 'Aberto' : 'Encerrado');
   }
 
-  // Status Camadas 2 e 3 (dependem de confrontos criados pelo admin)
-  if (rmm.ok) {
-    const temJogos = rmm.jogos.length > 0;
-    if (!temJogos) {
-      setStatus('stC2', null, 'Aguardando sorteio');
-      setStatus('stC3', null, 'Aguardando jogos');
-    } else {
-      // C2: alguma fase ainda aberta?
-      const algumaFaseAberta = Object.keys(rmm.fasesEncerradas).some(f => !rmm.fasesEncerradas[f]) || rmm.jogos.some(j => !rmm.fasesEncerradas[j.fase]);
-      setStatus('stC2', algumaFaseAberta, algumaFaseAberta ? 'Aberto' : 'Encerrado');
-      // C3: algum jogo ainda não iniciado?
-      const algumAberto = rmm.jogos.some(j => Date.now() < prazoLimite(j));
-      setStatus('stC3', algumAberto, algumAberto ? 'Aberto' : 'Encerrado');
-    }
-  }
+  // Cards por fase do mata-mata
+  buildFaseCards(rmm.ok ? rmm.jogos : []);
   aplicarTwemoji();
+}
+
+const FASE_CARDS = [
+  { key: '32',      emoji: '🏟️', tit: 'Rodada de 32',      fases: ['32'],      pts: '2 pts por acerto de quem avança' },
+  { key: 'oitavas', emoji: '🥊', tit: 'Oitavas de final',   fases: ['oitavas'], pts: '4 pts por acerto de quem avança' },
+  { key: 'quartas', emoji: '🎯', tit: 'Quartas de final',   fases: ['quartas'], pts: '6 pts por acerto de quem avança' },
+  { key: 'semis',   emoji: '🔥', tit: 'Semifinais',         fases: ['semis'],   pts: '10 pts por acerto de quem avança' },
+  { key: 'finais',  emoji: '🏆', tit: '3º lugar e Final',   fases: ['3lugar','final'], pts: '15 pts ao acertar o campeão' },
+];
+
+function buildFaseCards(jogosMM) {
+  const cont = document.getElementById('faseCards');
+  cont.innerHTML = FASE_CARDS.map(fc => {
+    const jogos = jogosMM.filter(j => fc.fases.indexOf(j.fase) >= 0);
+    let status, cls;
+    if (!jogos.length) { status = 'Aguardando'; cls = 'espera'; }
+    else if (jogos.some(j => Date.now() < prazoLimite(j))) { status = 'Aberto'; cls = 'aberto'; }
+    else { status = 'Encerrado'; cls = 'fechado'; }
+    const href = jogos.length ? `palpites.html?fase=${fc.key}` : 'palpites.html';
+    return `<a class="camada-card" href="${href}">
+      <div class="cc-top">
+        <span class="cc-emoji">${fc.emoji}</span>
+        <div><div class="cc-tit">${fc.tit}</div><div class="cc-sub">Placar + quem avança</div></div>
+        <span class="cc-status ${cls}">${status}</span>
+      </div>
+      <div class="cc-desc">${fc.pts} + placar (15/10/7,5/5). Trava por jogo, 5 min antes do apito.</div>
+    </a>`;
+  }).join('');
 }
 
 function setStatus(id, aberto, txt) {

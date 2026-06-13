@@ -27,7 +27,7 @@
 <div class="container">
 
   <div class="banner-info" id="bannerInfo">
-    Ordene o <strong>1º, 2º e 3º</strong> de cada grupo. Depois escolha os <strong>8 melhores terceiros</strong>.
+    Defina o <strong>1º e o 2º</strong> de cada grupo. Depois escolha <strong>8 times</strong> como melhores terceiros.
     <span id="travaTxt"></span>
   </div>
 
@@ -41,7 +41,8 @@
   <div class="card" id="cardTerceiros" style="display:none;">
     <p class="card-titulo">🥉 8 melhores terceiros</p>
     <p class="form-hint" style="margin-bottom:.8rem;">
-      Entre os times que você marcou como <strong>3º</strong>, escolha os <strong>8</strong> que você acha que avançam.
+      Avançam 8 dos 12 terceiros colocados. Escolha <strong>8 times</strong> (entre os que você <strong>não</strong> colocou em 1º/2º)
+      que você acha que vão se classificar como melhores terceiros — em qualquer ordem.
       Selecionados: <strong id="contTerceiros">0</strong>/8 · vale 2 pts cada acerto.
     </p>
     <div class="terceiros-grid" id="terceirosGrid"></div>
@@ -54,7 +55,7 @@
 let perfil = null;
 let encerrado = false;
 let GRUPOS = {};                  // { A: [t1,t2,t3,t4] }
-const estado = {};                // { A: {pos1,pos2,pos3} }
+const estado = {};                // { A: {pos1,pos2} }
 let terceiros = [];               // siglas selecionadas
 
 async function init() {
@@ -98,13 +99,12 @@ function render() {
   Object.keys(GRUPOS).sort().forEach(g => {
     const e = estado[g] || {};
     const box = document.createElement('div');
-    box.className = 'grupo-box' + ((e.pos1 && e.pos2 && e.pos3) ? ' ok' : '');
+    box.className = 'grupo-box' + ((e.pos1 && e.pos2) ? ' ok' : '');
     box.id = 'gb_' + g;
     box.innerHTML = `
       <h3>Grupo ${g} <span style="font-size:.7rem;color:var(--cinza-sub);font-weight:600;">${GRUPOS[g].length} seleções</span></h3>
       ${linhaSelect(g, 'pos1', '1º')}
-      ${linhaSelect(g, 'pos2', '2º')}
-      ${linhaSelect(g, 'pos3', '3º')}`;
+      ${linhaSelect(g, 'pos2', '2º')}`;
     cont.appendChild(box);
   });
   renderTerceiros();
@@ -127,11 +127,10 @@ function linhaSelect(g, pos, rotulo) {
 function mudar(g, pos, val) {
   if (!estado[g]) estado[g] = {};
   estado[g][pos] = val;
-  // checar duplicados no grupo
   const e = estado[g];
-  const vals = [e.pos1, e.pos2, e.pos3].filter(Boolean);
+  const vals = [e.pos1, e.pos2].filter(Boolean);
   const dup = vals.length !== new Set(vals).size;
-  ['pos1','pos2','pos3'].forEach(p => {
+  ['pos1','pos2'].forEach(p => {
     const s = document.getElementById('s_' + g + '_' + p);
     if (!s) return;
     const v = e[p];
@@ -139,31 +138,40 @@ function mudar(g, pos, val) {
     s.classList.toggle('dup', !!repetido);
   });
   if (dup) toast('Não repita a mesma seleção no grupo.', 'aviso');
-  // se mudou pos3, terceiros pode ter ficado inválido
-  if (pos === 'pos3') terceiros = terceiros.filter(t => poolTerceiros().indexOf(t) >= 0);
-  document.getElementById('gb_' + g).classList.toggle('ok', !!(e.pos1 && e.pos2 && e.pos3) && !dup);
+  // um time agora escolhido como 1º/2º não pode seguir marcado como terceiro
+  terceiros = terceiros.filter(t => poolTerceiros().indexOf(t) >= 0);
+  document.getElementById('gb_' + g).classList.toggle('ok', !!(e.pos1 && e.pos2) && !dup);
   renderTerceiros();
   marcarSujo();
 }
 
 function poolTerceiros() {
-  // os pos3 escolhidos (um por grupo)
-  return Object.keys(GRUPOS).sort().map(g => (estado[g] || {}).pos3).filter(Boolean);
+  // todos os times que NÃO foram escolhidos como 1º ou 2º em nenhum grupo
+  const escolhidos = {};
+  Object.keys(estado).forEach(g => { const e = estado[g] || {}; if (e.pos1) escolhidos[e.pos1] = 1; if (e.pos2) escolhidos[e.pos2] = 1; });
+  const todos = [];
+  Object.keys(GRUPOS).sort().forEach(g => GRUPOS[g].forEach(t => { if (!escolhidos[t]) todos.push(t); }));
+  return todos;
 }
 
 function renderTerceiros() {
-  const pool = poolTerceiros();
   const card = document.getElementById('cardTerceiros');
-  if (!pool.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   const grid = document.getElementById('terceirosGrid');
+  document.getElementById('contTerceiros').textContent = terceiros.length;
+
+  const completos = Object.keys(GRUPOS).every(g => { const e = estado[g] || {}; return e.pos1 && e.pos2; });
+  if (!completos) {
+    grid.innerHTML = '<div class="vazio" style="grid-column:1 / -1;">Defina o <strong>1º e o 2º de todos os grupos</strong> para liberar a escolha dos 8 terceiros.</div>';
+    return;
+  }
+  const pool = poolTerceiros(); // 24 times restantes
   grid.innerHTML = pool.map(t => {
     const sel = terceiros.indexOf(t) >= 0;
     const bloq = !sel && terceiros.length >= 8;
     return `<div class="terceiro-chip ${sel ? 'sel' : ''} ${(bloq || encerrado) ? 'disabled' : ''}" onclick="toggleTerceiro('${t}')">
       <span class="bd">${bandeira(t)}</span><span>${nomeTime(t)}</span>${sel ? ' ✓' : ''}</div>`;
   }).join('');
-  document.getElementById('contTerceiros').textContent = terceiros.length;
   aplicarTwemoji(grid);
 }
 
@@ -184,15 +192,15 @@ async function salvar() {
   // validar duplicados
   for (const g of Object.keys(estado)) {
     const e = estado[g];
-    const vals = [e.pos1, e.pos2, e.pos3].filter(Boolean);
-    if (vals.length !== new Set(vals).size) { toast('Grupo ' + g + ': há seleções repetidas.', 'erro'); return; }
+    const vals = [e.pos1, e.pos2].filter(Boolean);
+    if (vals.length !== new Set(vals).size) { toast('Grupo ' + g + ': não repita a mesma seleção.', 'erro'); return; }
   }
   if (terceiros.length > 8) { toast('Escolha no máximo 8 terceiros.', 'erro'); return; }
 
   const grupos = {};
   Object.keys(estado).forEach(g => {
     const e = estado[g];
-    if (e.pos1 || e.pos2 || e.pos3) grupos[g] = { pos1: e.pos1 || '', pos2: e.pos2 || '', pos3: e.pos3 || '' };
+    if (e.pos1 || e.pos2) grupos[g] = { pos1: e.pos1 || '', pos2: e.pos2 || '' };
   });
 
   const fab = document.getElementById('fab');
@@ -201,7 +209,7 @@ async function salvar() {
   fab.disabled = false; fab.innerHTML = '💾 Salvar palpite';
   if (res.ok) {
     sujo = false; fab.classList.remove('visivel');
-    const completos = Object.keys(grupos).filter(g => grupos[g].pos1 && grupos[g].pos2 && grupos[g].pos3).length;
+    const completos = Object.keys(grupos).filter(g => grupos[g].pos1 && grupos[g].pos2).length;
     toast('Salvo! ' + completos + '/12 grupos · ' + terceiros.length + '/8 terceiros.', 'ok');
   } else toast(res.msg || 'Erro ao salvar.', 'erro');
 }
