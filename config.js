@@ -111,11 +111,12 @@ async function exigirLogin(redirecionar) {
 
 // ── Datas / horário (fuso de Brasília, igual à v1) ──────────
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // trava 5 min antes do apito
+function soData(d) { return String(d).slice(0, 10); } // aceita '2026-06-28' ou ISO completo do Sheets
 function horarioJogo(j) {
   const partes = String(j.hora).replace('h30', ':30').replace('h', ':00').split(':');
   const h = String(parseInt(partes[0], 10) || 0).padStart(2, '0');
   const m = (partes[1] || '00');
-  return new Date(j.data + 'T' + h + ':' + m + ':00-03:00');
+  return new Date(soData(j.data) + 'T' + h + ':' + m + ':00-03:00');
 }
 function prazoLimite(j) { return horarioJogo(j).getTime() - ANTECEDENCIA_MS; }
 function palpiteEncerrado(j) { return Date.now() >= prazoLimite(j); }
@@ -134,7 +135,7 @@ function formatarData(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 function fmtDiaMes(isoData) {
-  return new Date(isoData + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return new Date(soData(isoData) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
 // ── Toast ───────────────────────────────────────────────────

@@ -619,7 +619,7 @@ function atualizarChaveamento() {
     if (rowById[id]) {
       const r = rowById[id];
       const atual = vals[r - 1];
-      if (String(atual[4]) !== String(t1) || String(atual[5]) !== String(t2) || atual[1] !== b.fase || atual[2] !== b.data || atual[3] !== b.hora) {
+      if (String(atual[4]) !== String(t1) || String(atual[5]) !== String(t2) || atual[1] !== b.fase || _normData(atual[2]) !== b.data || String(atual[3]) !== String(b.hora)) {
         aba.getRange(r, 2, 1, 5).setValues([[b.fase, b.data, b.hora, t1, t2]]);
         atualizados++;
       }
@@ -706,13 +706,18 @@ function _pontosCamada1(palp, classif) {
 // MATA-MATA — jogos, travas e gols da final
 // (Camadas 2 e 3 são palpitadas juntas: ver salvarPalpitesMataMata)
 // ════════════════════════════════════════════════════════════
+// O Sheets pode converter '2026-06-28' em objeto Date; normaliza de volta p/ 'yyyy-MM-dd'.
+function _normData(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, _ss().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  return String(v).slice(0, 10);
+}
 function _jogosMataMata() {
   const aba = _aba('JogosMataMata', ['JogoID','Fase','Data','Hora','Time1','Time2','Ordem','DataCriacao']);
   const vals = aba.getDataRange().getValues();
   const lista = [];
   for (let i = 1; i < vals.length; i++) {
     if (!vals[i][0]) continue;
-    lista.push({ id: String(vals[i][0]), fase: vals[i][1], data: vals[i][2], hora: vals[i][3], time1: vals[i][4], time2: vals[i][5], ordem: vals[i][6] });
+    lista.push({ id: String(vals[i][0]), fase: vals[i][1], data: _normData(vals[i][2]), hora: vals[i][3], time1: vals[i][4], time2: vals[i][5], ordem: vals[i][6] });
   }
   lista.sort((a, b) => (FASES[a.fase] ? FASES[a.fase].ordem : 9) - (FASES[b.fase] ? FASES[b.fase].ordem : 9) || _kickoff(a.data, a.hora) - _kickoff(b.data, b.hora));
   return lista;
