@@ -1333,3 +1333,68 @@ function TESTE_limparTudo() {
   Logger.log('TUDO limpo. Sistema zerado.');
   return { ok: true, msg: 'Tudo limpo. Sistema zerado para o lançamento real.' };
 }
+
+// Preenche resultados ALEATÓRIOS para os 72 jogos de grupo (na própria v2, como override
+// local), fechando a classificação — permite testar o mata-mata sem esperar a Copa real.
+function TESTE_resultadosGrupos() {
+  const aba = _aba('ResultadosGrupos', ['JogoID','Gols1','Gols2','DataRegistro']);
+  const last = aba.getLastRow(); if (last > 1) aba.deleteRows(2, last - 1);
+  const agora = new Date().toISOString();
+  JOGOS.forEach(j => aba.appendRow([j.id, Math.floor(Math.random() * 4), Math.floor(Math.random() * 4), agora]));
+  Logger.log('72 resultados de grupo simulados.');
+  return { ok: true, msg: '72 resultados de grupo simulados (local). Classificação fechada.' };
+}
+
+// Aloca os 8 terceiros automaticamente (qualquer combinação válida) — só para TESTE.
+function _autoAtribuirTerceiros(classif) {
+  const thirds = classif.melhoresTerceirosDet || [];
+  if (thirds.length < 8) return null;
+  const byGroup = {}; thirds.forEach(t => byGroup[t.grupo] = t.code);
+  const slots = THIRD_SLOTS, assign = {}, used = {};
+  function bt(i) {
+    if (i >= slots.length) return true;
+    const s = slots[i];
+    for (let x = 0; x < s.grupos.length; x++) {
+      const g = s.grupos[x];
+      if (byGroup[g] && !used[g]) {
+        used[g] = true; assign[s.slot] = byGroup[g];
+        if (bt(i + 1)) return true;
+        used[g] = false; delete assign[s.slot];
+      }
+    }
+    return false;
+  }
+  return bt(0) ? assign : null;
+}
+
+function _appendResMM(jogoId, g1, g2, venc) {
+  _aba('ResultadosMataMata', ['JogoID','Gols1','Gols2','Vencedor','DataRegistro']).appendRow([String(jogoId), g1, g2, venc, new Date().toISOString()]);
+}
+
+// Aloca terceiros automaticamente, gera os 32-avos e SIMULA todo o mata-mata até a final.
+// Pré-requisito: TESTE_resultadosGrupos() (grupos completos).
+function TESTE_simularMataMata() {
+  const classif = calcularClassificacaoReal();
+  if (!classif.todosCompletos) return { ok: false, msg: 'Rode TESTE_resultadosGrupos() antes (grupos incompletos).' };
+  const atrib = _autoAtribuirTerceiros(classif);
+  if (!atrib) return { ok: false, msg: 'Não consegui alocar os terceiros automaticamente.' };
+  _props().setProperty('terceiros', JSON.stringify(atrib));
+  _props().setProperty('autoBracket', '1');
+  atualizarChaveamento();
+  let total = 0;
+  for (let round = 0; round < 8; round++) {
+    const jogos = _jogosMataMata();
+    const resMap = _mapResultadosMataMata();
+    let novos = 0;
+    jogos.forEach(j => {
+      if (resMap[j.id]) return;
+      const g1 = Math.floor(Math.random() * 4), g2 = Math.floor(Math.random() * 4);
+      const venc = g1 > g2 ? j.time1 : (g2 > g1 ? j.time2 : (Math.random() < 0.5 ? j.time1 : j.time2));
+      _appendResMM(j.id, g1, g2, venc); novos++; total++;
+    });
+    atualizarChaveamento();
+    if (!novos) break;
+  }
+  Logger.log('Mata-mata simulado: ' + total + ' jogos.');
+  return { ok: true, msg: 'Mata-mata simulado: ' + total + ' jogos (terceiros alocados automaticamente).' };
+}
