@@ -17,8 +17,8 @@
 // 6. A cada alteração aqui, publique NOVA VERSÃO da implantação.
 // ============================================================
 
-const SPREADSHEET_ID = 'COLE_AQUI_O_ID_DA_PLANILHA'; // ← substitua
-const ADMIN_PASSWORD = 'bolao2026admin';             // ← troque por uma senha forte
+const SPREADSHEET_ID = 'COLE_AQUI_O_ID_DA_PLANILHA'; // ← substitua no editor do Apps Script
+const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';     // ← defina no editor (NÃO versionar a senha real)
 
 const VALOR_INSCRICAO = 100;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
