@@ -1252,3 +1252,84 @@ function getContagens(senha) {
   for (let i = 1; i < pm.length; i++) { const pid = pm[i][0]; if (!pid) continue; cont.mataMata[pid] = (cont.mataMata[pid] || 0) + 1; }
   return { ok: true, contagens: cont };
 }
+
+// ════════════════════════════════════════════════════════════
+// FERRAMENTAS DE TESTE  (rodar no editor do Apps Script — ▶ Run)
+// Não ficam expostas na web. Use para simular e depois ZERAR.
+// ════════════════════════════════════════════════════════════
+function _embaralhar(arr) {
+  arr = arr.slice();
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  return arr;
+}
+
+// Cria 6 participantes de teste (APROVADO, senha "123456") com palpites aleatórios
+// nas 3 camadas (a Camada 2/3 só se já houver jogos do mata-mata criados).
+function TESTE_semear() {
+  const N = 6;
+  const abaP  = _aba('Participantes', COLS_PART);
+  const abaPG = _aba('PalpitesGrupos', ['ParticipanteID','Dados','DataRegistro']);
+  const abaBr = _aba('Bracket', ['ParticipanteID','Dados','DataRegistro']);
+  const abaPM = _aba('PalpitesMataMata', ['ParticipanteID','JogoID','Gols1','Gols2','DataRegistro']);
+
+  const grupos = {};
+  JOGOS.forEach(j => { if (!grupos[j.grupo]) grupos[j.grupo] = []; [j.time1, j.time2].forEach(t => { if (grupos[j.grupo].indexOf(t) < 0) grupos[j.grupo].push(t); }); });
+  const gkeys = Object.keys(grupos).sort();
+  const jogosMM = _jogosMataMata();
+  const agora = new Date().toISOString();
+
+  let criados = 0;
+  for (let k = 1; k <= N; k++) {
+    const id = 'TESTE' + String(Date.now()).slice(-5) + k;
+    const email = 'teste' + k + '_' + String(Date.now()).slice(-4) + '@teste.com';
+    const salt = _gerarSalt(), hash = _hash(salt, '123456');
+    const golsFinal = Math.floor(Math.random() * 5);
+    abaP.appendRow([id, 'Teste ' + k, email, '8899999000' + k, salt, hash, 'APROVADO', agora, agora, golsFinal, '', _novoToken(), '', '']);
+
+    // Camada 1
+    const palpG = { grupos: {}, terceiros: [] };
+    const pos3s = [];
+    gkeys.forEach(g => { const ord = _embaralhar(grupos[g]); palpG.grupos[g] = { pos1: ord[0], pos2: ord[1], pos3: ord[2] }; pos3s.push(ord[2]); });
+    palpG.terceiros = _embaralhar(pos3s).slice(0, 8);
+    abaPG.appendRow([id, JSON.stringify(palpG), agora]);
+
+    // Camadas 2 e 3 (se houver confrontos do mata-mata)
+    if (jogosMM.length) {
+      const picks = {};
+      jogosMM.forEach(j => {
+        picks[j.id] = Math.random() < 0.5 ? j.time1 : j.time2;
+        abaPM.appendRow([id, j.id, Math.floor(Math.random() * 4), Math.floor(Math.random() * 4), agora]);
+      });
+      abaBr.appendRow([id, JSON.stringify(picks), agora]);
+    }
+    criados++;
+  }
+  Logger.log('Semeados ' + criados + ' participantes de teste (senha 123456).');
+  return { ok: true, msg: 'Semeados ' + criados + ' participantes de teste (senha 123456).' };
+}
+
+// Passo 1 do reset (proteção contra apagar sem querer).
+function TESTE_armarReset() {
+  _props().setProperty('resetArmado', String(Date.now()));
+  Logger.log('Reset ARMADO. Rode TESTE_limparTudo() em até 10 minutos.');
+  return { ok: true, msg: 'Reset armado. Rode TESTE_limparTudo() em até 10 min.' };
+}
+
+// Passo 2: apaga TODOS os dados (participantes, palpites, jogos, resultados) e zera o sistema.
+// Requer TESTE_armarReset() nos últimos 10 min.
+function TESTE_limparTudo() {
+  const armado = Number(_props().getProperty('resetArmado') || 0);
+  if (Date.now() - armado > 10 * 60 * 1000) {
+    Logger.log('BLOQUEADO: rode TESTE_armarReset() primeiro.');
+    return { ok: false, msg: 'Rode TESTE_armarReset() primeiro (proteção contra apagar sem querer).' };
+  }
+  const ss = _ss();
+  ['Participantes','PalpitesGrupos','Bracket','PalpitesMataMata','JogosMataMata','ResultadosGrupos','ResultadosMataMata'].forEach(nome => {
+    const aba = ss.getSheetByName(nome);
+    if (aba) { const last = aba.getLastRow(); if (last > 1) aba.deleteRows(2, last - 1); }
+  });
+  ['terceiros','autoBracket','resetArmado'].forEach(p => _props().deleteProperty(p));
+  const c = CacheService.getScriptCache(); c.remove('v1grupos'); c.remove('v1grupos_backup');
+  Logger.log('TUDO limpo. Sistema zerado.');
+  return { ok: true, msg: 'Tudo limpo. Sistema zerado para o lançamento real.' };
+}
