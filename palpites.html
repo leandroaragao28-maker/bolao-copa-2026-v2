@@ -20,8 +20,10 @@
     .resultado-mm { grid-column: 1 / -1; margin-top: .55rem; padding-top: .5rem; border-top: 1px dashed var(--cinza-borda); display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .74rem; flex-wrap: wrap; }
     .resultado-mm .rm-l { display: flex; flex-direction: column; gap: .2rem; text-align: left; }
     .res-g { background: #E8F5E9; color: #1B5E20; padding: .05rem .35rem; border-radius: 5px; font-weight: 800; }
-    .res-y { background: #FFF8E1; color: #F57F17; padding: .05rem .35rem; border-radius: 5px; font-weight: 800; }
     .res-n { color: var(--cinza-sub); font-weight: 700; }
+    .hl-tier { padding: .05rem .35rem; border-radius: 5px; font-weight: 800; }
+    .t15 { background:#E8F5E9; color:#1B5E20; } .t10 { background:#E0F2F1; color:#00695C; }
+    .t7 { background:#FFF8E1; color:#F57F17; } .t5 { background:#FFE0CC; color:#BF360C; } .t0 { background:#F1F3F5; color:#9AA5B1; }
     .rm-pts { font-weight: 900; color: var(--verde); background: #E8F5E9; border-radius: 20px; padding: .3rem .7rem; white-space: nowrap; }
   </style>
 </head>
@@ -205,12 +207,13 @@ function resultadoHTML(j) {
   let seu = '<span class="res-n">você não palpitou</span>', total = 0;
   if (pal) {
     const pts = calcPlacar(pal.gols1, pal.gols2, res.gols1, res.gols2);
-    const pcls = pts >= 15 ? 'res-g' : (pts > 0 ? 'res-y' : 'res-n');
+    const tier = pts >= 15 ? 't15' : pts >= 10 ? 't10' : pts >= 7.5 ? 't7' : pts >= 5 ? 't5' : 't0';
+    const plHtml = pts > 0 ? `<span class="hl-tier ${tier}">${pal.gols1}×${pal.gols2}</span>` : `<span class="res-n">${pal.gols1}×${pal.gols2}</span>`;
     const acertou = pal.vencedor && res.vencedor && pal.vencedor === res.vencedor;
     const ptsAv = acertou ? (FASES_INFO[j.fase] ? FASES_INFO[j.fase].pontos : 0) : 0;
     total = pts + ptsAv;
-    const avHtml = pal.vencedor ? `<span class="${acertou ? 'res-g' : 'res-n'}">${nomeTime(pal.vencedor)}${acertou ? ' ✓' : ''}</span>` : '<span class="res-n">—</span>';
-    seu = `placar <span class="${pcls}">${pal.gols1}×${pal.gols2}</span> · avança ${avHtml}`;
+    const avHtml = pal.vencedor ? `<span class="${acertou ? 'res-g hl-tier' : 'res-n'}">${nomeTime(pal.vencedor)}${acertou ? ' ✓' : ''}</span>` : '<span class="res-n">—</span>';
+    seu = `placar ${plHtml} · avança ${avHtml}`;
   }
   return `<div class="resultado-mm">
     <div class="rm-l">
