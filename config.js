@@ -2,7 +2,7 @@
 // ⚠️ Cole abaixo a URL /exec do seu Web App do Google Apps Script.
 
 const CONFIG = {
-  API_URL: 'COLE_AQUI_A_URL_DO_WEB_APP',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwQ_U7ylXlC0FhVL4iJvxx12H7BsOv7SgngcV91nhIotW_s0VLiDYb8zt6wy6asWdHK/exec',
   BOLAO_NOME: 'Bolão da Copa 2026',
   EDICAO: 'v2 · Fase Eliminatória',
   VALOR_INSCRICAO: 100.00,
