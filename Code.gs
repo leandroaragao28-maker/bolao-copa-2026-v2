@@ -26,6 +26,10 @@
 const SPREADSHEET_ID = '';                         // ← vinculado: deixe vazio. Standalone: cole o ID.
 const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';   // ← defina no editor (NÃO versionar a senha real)
 
+// URL do Web App da v1 (fase de grupos). A v2 puxa daqui os resultados reais
+// dos grupos automaticamente (mesmos IDs 1..72), evitando re-lançar placares.
+const V1_API_URL = 'https://script.google.com/macros/s/AKfycbyZEHNn7NmtJk1IMUfiKSVbpMcTie2ZrIG2cygqj6I_MhBWdZjtR8gJibIRL4AMn-FsRg/exec';
+
 const VALOR_INSCRICAO = 100;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
 
@@ -253,6 +257,7 @@ function doPost(e) {
     else if (a === 'salvarResultadoGrupo')     resultado = salvarResultadoGrupo(body);
     else if (a === 'salvarResultadoMataMata')  resultado = salvarResultadoMataMata(body);
     else if (a === 'getResultadosGruposAdmin') resultado = getResultadosGruposAdmin(body.senha);
+    else if (a === 'sincronizarGruposV1')      resultado = sincronizarGruposV1(body.senha);
     else if (a === 'getResultadosMataMataAdmin') resultado = getResultadosMataMataAdmin(body.senha);
     else if (a === 'getContagens')             resultado = getContagens(body.senha);
     else if (a === 'inicializar')              resultado = inicializar();
@@ -708,7 +713,33 @@ function getMeusPalpitesMataMata(token) {
 // ════════════════════════════════════════════════════════════
 // RESULTADOS
 // ════════════════════════════════════════════════════════════
-function _mapResultadosGrupos() {
+// Resultados dos grupos vindos do v1 (com cache + fallback de backup).
+function _resultadosGruposV1() {
+  if (!V1_API_URL || V1_API_URL.indexOf('script.google.com') < 0) return null;
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('v1grupos');
+  if (cached) { try { return JSON.parse(cached); } catch (e) {} }
+  try {
+    const resp = UrlFetchApp.fetch(V1_API_URL, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify({ action: 'getResultadosPublico' }),
+      muteHttpExceptions: true, followRedirects: true
+    });
+    const data = JSON.parse(resp.getContentText());
+    if (data && data.ok && data.resultados) {
+      const json = JSON.stringify(data.resultados);
+      cache.put('v1grupos', json, 90);           // fresco por 90s
+      cache.put('v1grupos_backup', json, 21600); // backup 6h
+      return data.resultados;
+    }
+  } catch (e) {}
+  const bk = cache.get('v1grupos_backup');       // fallback se o v1 cair
+  if (bk) { try { return JSON.parse(bk); } catch (e) {} }
+  return null;
+}
+
+// Resultados manuais lançados na própria v2 (override/fallback).
+function _mapResultadosGruposLocal() {
   const aba = _aba('ResultadosGrupos', ['JogoID','Gols1','Gols2','DataRegistro']);
   const vals = aba.getDataRange().getValues();
   const map = {};
@@ -717,6 +748,20 @@ function _mapResultadosGrupos() {
     map[vals[i][0]] = { gols1: vals[i][1], gols2: vals[i][2] };
   }
   return map;
+}
+
+// Fonte oficial de resultados dos grupos na v2: v1 (auto) + override manual local.
+function _mapResultadosGrupos() {
+  const v1 = _resultadosGruposV1();              // automático da v1
+  const local = _mapResultadosGruposLocal();     // overrides manuais (se houver)
+  const out = {};
+  if (v1) Object.keys(v1).forEach(k => { out[k] = { gols1: v1[k].gols1, gols2: v1[k].gols2 }; });
+  Object.keys(local).forEach(k => { out[k] = local[k]; }); // manual vence
+  return out;
+}
+
+function _limparCacheGruposV1() {
+  CacheService.getScriptCache().remove('v1grupos');
 }
 function _mapResultadosMataMata() {
   const aba = _aba('ResultadosMataMata', ['JogoID','Gols1','Gols2','Vencedor','DataRegistro']);
@@ -1019,7 +1064,16 @@ function salvarResultadoMataMata(body) {
 
 function getResultadosGruposAdmin(senha) {
   if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
-  return { ok: true, resultados: _mapResultadosGrupos() };
+  const v1 = _resultadosGruposV1();
+  return { ok: true, resultados: _mapResultadosGrupos(), fonteV1: !!v1, qtdV1: v1 ? Object.keys(v1).length : 0 };
+}
+
+function sincronizarGruposV1(senha) {
+  if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
+  _limparCacheGruposV1();
+  const r = _resultadosGruposV1();
+  const n = r ? Object.keys(r).length : 0;
+  return { ok: true, msg: 'Sincronizado com o v1: ' + n + ' resultado(s) de grupo.', total: n, disponivel: !!r };
 }
 function getResultadosMataMataAdmin(senha) {
   if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };

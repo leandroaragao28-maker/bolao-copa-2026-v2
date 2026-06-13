@@ -68,8 +68,11 @@
     <!-- ABA GRUPOS -->
     <div id="aba-grupos" style="display:none;">
       <div class="card" style="padding:.8rem;">
-        <p class="card-titulo" style="font-size:.9rem;">Resultados reais — fase de grupos</p>
-        <div class="banner-info" style="margin-bottom:.8rem;">Lance os placares dos 72 jogos. Alimentam a Camada 1 (classificação real).</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
+          <p class="card-titulo" style="font-size:.9rem;margin:0;">Resultados — fase de grupos</p>
+          <button class="btn btn-secondary btn-sm" onclick="sincronizarV1()">🔄 Atualizar do v1</button>
+        </div>
+        <div class="banner-info" id="bannerGruposV1" style="margin-bottom:.8rem;">⏳ Verificando link com o v1…</div>
         <div id="listaGrupos"></div>
       </div>
     </div>
@@ -216,7 +219,14 @@ async function carregarGrupos() {
     api({ action: 'getResultadosGruposAdmin', senha })
   ]);
   if (rj.ok) _jogos = rj.jogos;
-  if (rr.ok) _resGrupos = rr.resultados;
+  if (rr.ok) {
+    _resGrupos = rr.resultados;
+    const b = document.getElementById('bannerGruposV1');
+    if (b) {
+      if (rr.fonteV1) b.innerHTML = '🔗 Resultados puxados <strong>automaticamente do sistema v1</strong> (' + rr.qtdV1 + ' lançados). Lance os placares só no v1 — aqui é só conferência. Editar abaixo é override manual opcional.';
+      else b.innerHTML = '⚠️ Não consegui ler do v1 agora. Usando resultados locais (se houver). Clique em 🔄 Atualizar do v1.';
+    }
+  }
   const grupos = {};
   _jogos.forEach(j => { (grupos[j.grupo] = grupos[j.grupo] || []).push(j); });
   const cont = document.getElementById('listaGrupos');
@@ -243,6 +253,10 @@ async function carregarGrupos() {
     });
   });
   aplicarTwemoji(cont);
+}
+async function sincronizarV1() {
+  const res = await api({ action: 'sincronizarGruposV1', senha });
+  if (res.ok) { toast(res.msg, 'ok'); carregarGrupos(); } else toast(res.msg, 'erro');
 }
 async function salvarResGrupo(id) {
   const g1 = document.getElementById('rg1_'+id).value, g2 = document.getElementById('rg2_'+id).value;
