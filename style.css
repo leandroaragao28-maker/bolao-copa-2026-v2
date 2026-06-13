@@ -42,7 +42,7 @@ header {
 header .logo { font-size: 1.6rem; flex-shrink: 0; }
 header .header-texto h1 { font-size: 1rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
 header .header-texto p  { font-size: .7rem; opacity: .7; }
-header nav { margin-left: auto; display: flex; gap: .3rem; flex-shrink: 0; }
+header nav { margin-left: auto; display: flex; gap: .3rem; flex-wrap: wrap; justify-content: flex-end; }
 header nav a {
   color: rgba(255,255,255,.8); text-decoration: none; font-size: .72rem; font-weight: 600;
   padding: .35rem .6rem; border-radius: 20px; border: 1px solid rgba(255,255,255,.25);
