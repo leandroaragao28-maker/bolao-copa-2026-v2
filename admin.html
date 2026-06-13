@@ -79,8 +79,20 @@
 
     <!-- ABA MATA-MATA -->
     <div id="aba-mm" style="display:none;">
+
+      <!-- Chaveamento automático -->
       <div class="card" style="padding:.9rem;">
-        <p class="card-titulo" style="font-size:.9rem;">➕ Criar confronto do mata-mata</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
+          <p class="card-titulo" style="font-size:.9rem;margin:0;">⚙️ Chaveamento automático</p>
+          <button class="btn btn-primary btn-sm" onclick="gerarChaveamentoUI()">🔄 Gerar / atualizar</button>
+        </div>
+        <div id="chaveStatus" class="banner-info">Carregando…</div>
+        <div id="terceirosBox"></div>
+      </div>
+
+      <details class="card" style="padding:.9rem;">
+        <summary style="cursor:pointer;font-weight:800;color:var(--azul);font-size:.9rem;">➕ Criar confronto manualmente (fallback)</summary>
+        <p class="form-hint" style="margin:.5rem 0;">Use só se precisar de algo fora do chaveamento automático.</p>
         <div class="mm-form">
           <div><label>Fase</label><select id="nf-fase"></select></div>
           <div><label>Data</label><input type="date" id="nf-data"></div>
@@ -90,7 +102,7 @@
           <div><label>Seleção 2</label><select id="nf-t2"></select></div>
           <div class="full"><button class="btn btn-primary btn-block" onclick="criarConfronto()">Criar confronto</button></div>
         </div>
-      </div>
+      </details>
       <div class="card" style="padding:.8rem;">
         <p class="card-titulo" style="font-size:.9rem;">Confrontos & resultados</p>
         <div class="banner-info" style="margin-bottom:.8rem;">Lance placar + <strong>quem avançou</strong> (obrigatório em empate por pênaltis). Alimenta Camadas 2 e 3.</div>
@@ -152,7 +164,7 @@ function aba(a) {
     document.getElementById('tab-' + x).className = x === a ? 'ativo' : '';
   });
   if (a === 'resumo') carregarResumo();
-  if (a === 'mm') carregarMM();
+  if (a === 'mm') { carregarMM(); carregarChaveamento(); }
 }
 
 // ── Participantes ──
@@ -264,6 +276,55 @@ async function salvarResGrupo(id) {
   const res = await api({ action: 'salvarResultadoGrupo', senha, jogoId: id, gols1: parseInt(g1), gols2: parseInt(g2) });
   if (res.ok) { toast('Salvo!', 'ok'); _resGrupos[id] = { gols1: parseInt(g1), gols2: parseInt(g2) }; carregarGrupos(); }
   else toast(res.msg, 'erro');
+}
+
+// ── Chaveamento automático ──
+let _chave = null;
+async function carregarChaveamento() {
+  const d = await api({ action: 'getChaveamentoAdmin', senha });
+  if (!d.ok) return;
+  _chave = d;
+  renderChaveamento(d);
+}
+function renderChaveamento(d) {
+  const status = document.getElementById('chaveStatus');
+  const box = document.getElementById('terceirosBox');
+  if (!d.todosCompletos) {
+    status.innerHTML = '⏳ <strong>Aguardando os 12 grupos terminarem.</strong> Você já pode clicar em <em>Gerar/atualizar</em> para criar os 8 jogos determinísticos (Vencedor × Vice) cujos grupos já fecharam. Os 8 jogos com "melhor terceiro" liberam quando todos os grupos acabarem.';
+    box.innerHTML = '';
+    return;
+  }
+  status.innerHTML = '✅ <strong>Grupos completos.</strong> Aloque os 8 melhores terceiros e salve — os 32-avos serão criados/atualizados.';
+  const thirds = d.melhoresTerceiros || [];
+  let html = '<div style="margin:.6rem 0;font-size:.8rem;background:var(--cinza-fundo);padding:.5rem .7rem;border-radius:8px;"><strong>8 melhores terceiros:</strong> ' +
+    thirds.map(t => `<span style="white-space:nowrap;">${t.grupo}=${nomeTime(t.code)}</span>`).join(' · ') + '</div>';
+  d.slots.forEach(s => {
+    const opts = ['<option value="">— escolher terceiro —</option>'].concat(
+      thirds.filter(t => s.grupos.indexOf(t.grupo) >= 0).map(t => {
+        const sel = String(d.terceirosAtribuidos[String(s.slot)]) === t.code ? 'selected' : '';
+        return `<option value="${t.code}" ${sel}>Grupo ${t.grupo} — ${nomeTime(t.code)}</option>`;
+      })).join('');
+    html += `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem;">
+      <span style="font-size:.76rem;min-width:140px;">Jogo ${s.jogo} · Venc.${s.vencedorGrupo} <span style="color:var(--cinza-sub);">vs</span></span>
+      <select id="terc_${s.slot}" style="flex:1;padding:.45rem;border:2px solid var(--cinza-borda);border-radius:6px;font-size:.82rem;">${opts}</select>
+    </div>`;
+  });
+  html += '<button class="btn btn-primary btn-block btn-sm" style="margin-top:.5rem;" onclick="salvarTerceiros()">💾 Salvar terceiros e gerar 32-avos</button>';
+  box.innerHTML = html;
+}
+async function gerarChaveamentoUI() {
+  const res = await api({ action: 'gerarChaveamento', senha });
+  if (res.ok) { toast(res.msg, 'ok'); carregarMM(); carregarChaveamento(); } else toast(res.msg, 'erro');
+}
+async function salvarTerceiros() {
+  if (!_chave) return;
+  const atrib = {}, usados = {};
+  for (const s of _chave.slots) {
+    const v = document.getElementById('terc_' + s.slot).value;
+    if (v) { if (usados[v]) { toast('Terceiro repetido: ' + nomeTime(v), 'erro'); return; } usados[v] = 1; atrib[String(s.slot)] = v; }
+  }
+  const res = await api({ action: 'definirTerceiros', senha, atribuicoes: atrib });
+  if (res.ok) { toast(res.msg, 'ok'); carregarMM(); carregarChaveamento(); } else toast(res.msg, 'erro');
 }
 
 // ── Mata-mata (confrontos + resultados) ──

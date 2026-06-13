@@ -92,10 +92,14 @@ Rode **`DEPLOY - Bolao Copa 2026 v2.bat`** (chama `deploy_Bolao-Copa-2026-v2.ps1
 
 ## 4. Operação durante o torneio (admin)
 
-1. **Antes de 23/jun:** participantes preenchem a Camada 1. Você lança os resultados dos grupos na aba **🏟️ Grupos** conforme os jogos acontecem.
-2. **Saiu o chaveamento (≈28/jun):** na aba **🗺️ Mata-mata**, crie os 16 confrontos da Rodada de 32 (fase, data, hora, seleções). Isso abre a Camada 2 (32-avos) e a Camada 3 desses jogos.
-3. **A cada jogo do mata-mata:** lance o placar **e quem avançou** (obrigatório informar o vencedor em caso de empate por pênaltis).
-4. **Nova fase:** quando os classificados estiverem definidos, crie os confrontos da fase seguinte (oitavas, quartas, …). Cada fase trava sozinha antes do seu 1º jogo.
-5. **Pagamentos:** aprove na aba **👥 Participantes**. Só aprovados pontuam no ranking.
+O sistema é **fortemente automatizado**:
 
-O ranking e as pontuações são **calculados ao vivo** a partir dos palpites e resultados — não há "recalcular".
+1. **Resultados dos grupos** → você lança **só no sistema v1** (como já faz). A v2 puxa automaticamente (mesmos IDs) e calcula a classificação real da Camada 1. Confira na aba **🏟️ Grupos** (botão **🔄 Atualizar do v1**).
+2. **Pagamentos** → aprove na aba **👥 Participantes**. Só aprovados pontuam.
+3. **Quando os 12 grupos terminarem (≈27/jun)** → aba **🗺️ Mata-mata → ⚙️ Chaveamento automático**: aloque os **8 melhores terceiros** (8 menus, já filtrados pelos grupos válidos) e clique **💾 Salvar terceiros e gerar 32-avos**. Os 16 jogos dos 32-avos são criados sozinhos, com data/hora/seleções corretas. Isso abre as Camadas 2 e 3.
+4. **A cada jogo do mata-mata** → lance o placar **e quem avançou** (obrigatório em empate por pênaltis). O vencedor **avança automaticamente** — os confrontos de oitavas → quartas → semis → 3º lugar → final vão sendo criados sozinhos conforme os resultados saem.
+5. O botão **🔄 Gerar/atualizar** recompõe o chaveamento a qualquer momento. O formulário **Criar confronto manualmente** é só fallback.
+
+A estrutura oficial do chaveamento 2026 (datas, horários de Brasília e progressão) já está embutida no `Code.gs`. O ranking e as pontuações são **calculados ao vivo** — não há "recalcular".
+
+> ⚠️ **Ao republicar o `Code.gs`:** como a v2 agora acessa um serviço externo (o Web App do v1), o Google pedirá uma **nova autorização** na 1ª execução (permissão de "conectar a um serviço externo"). Rode qualquer função uma vez para autorizar e publique uma **nova versão** da implantação.

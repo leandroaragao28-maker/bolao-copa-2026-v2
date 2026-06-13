@@ -49,6 +49,54 @@ const FASES = {
 };
 
 // ────────────────────────────────────────────────────────────
+// CHAVEAMENTO OFICIAL — Copa 2026 (estrutura FIFA, horários de Brasília)
+// Cada lado: {t:'W',g}=1º grupo · {t:'R',g}=2º grupo · {t:'3',slot,grupos}=melhor 3º
+//            {t:'V',m}=vencedor do jogo m · {t:'L',m}=perdedor do jogo m
+// ────────────────────────────────────────────────────────────
+const BRACKET = [
+  // Rodada de 32 (jogos 73–88)
+  { n:73, fase:'32', data:'2026-06-28', hora:'16h',   l1:{t:'R',g:'A'}, l2:{t:'R',g:'B'} },
+  { n:74, fase:'32', data:'2026-06-29', hora:'17h30', l1:{t:'W',g:'E'}, l2:{t:'3',slot:74,grupos:['A','B','C','D','F']} },
+  { n:75, fase:'32', data:'2026-06-29', hora:'22h',   l1:{t:'W',g:'F'}, l2:{t:'R',g:'C'} },
+  { n:76, fase:'32', data:'2026-06-29', hora:'14h',   l1:{t:'W',g:'C'}, l2:{t:'R',g:'F'} },
+  { n:77, fase:'32', data:'2026-06-30', hora:'18h',   l1:{t:'W',g:'I'}, l2:{t:'3',slot:77,grupos:['C','D','F','G','H']} },
+  { n:78, fase:'32', data:'2026-06-30', hora:'14h',   l1:{t:'R',g:'E'}, l2:{t:'R',g:'I'} },
+  { n:79, fase:'32', data:'2026-06-30', hora:'22h',   l1:{t:'W',g:'A'}, l2:{t:'3',slot:79,grupos:['C','E','F','H','I']} },
+  { n:80, fase:'32', data:'2026-07-01', hora:'13h',   l1:{t:'W',g:'L'}, l2:{t:'3',slot:80,grupos:['E','H','I','J','K']} },
+  { n:81, fase:'32', data:'2026-07-01', hora:'21h',   l1:{t:'W',g:'D'}, l2:{t:'3',slot:81,grupos:['B','E','F','I','J']} },
+  { n:82, fase:'32', data:'2026-07-01', hora:'17h',   l1:{t:'W',g:'G'}, l2:{t:'3',slot:82,grupos:['A','E','H','I','J']} },
+  { n:83, fase:'32', data:'2026-07-02', hora:'20h',   l1:{t:'R',g:'K'}, l2:{t:'R',g:'L'} },
+  { n:84, fase:'32', data:'2026-07-02', hora:'16h',   l1:{t:'W',g:'H'}, l2:{t:'R',g:'J'} },
+  { n:85, fase:'32', data:'2026-07-03', hora:'0h',    l1:{t:'W',g:'B'}, l2:{t:'3',slot:85,grupos:['E','F','G','I','J']} },
+  { n:86, fase:'32', data:'2026-07-03', hora:'19h',   l1:{t:'W',g:'J'}, l2:{t:'R',g:'H'} },
+  { n:87, fase:'32', data:'2026-07-03', hora:'22h30', l1:{t:'W',g:'K'}, l2:{t:'3',slot:87,grupos:['D','E','I','J','L']} },
+  { n:88, fase:'32', data:'2026-07-03', hora:'15h',   l1:{t:'R',g:'D'}, l2:{t:'R',g:'G'} },
+  // Oitavas (89–96)
+  { n:89, fase:'oitavas', data:'2026-07-04', hora:'18h', l1:{t:'V',m:74}, l2:{t:'V',m:77} },
+  { n:90, fase:'oitavas', data:'2026-07-04', hora:'14h', l1:{t:'V',m:73}, l2:{t:'V',m:75} },
+  { n:91, fase:'oitavas', data:'2026-07-05', hora:'17h', l1:{t:'V',m:76}, l2:{t:'V',m:78} },
+  { n:92, fase:'oitavas', data:'2026-07-05', hora:'21h', l1:{t:'V',m:79}, l2:{t:'V',m:80} },
+  { n:93, fase:'oitavas', data:'2026-07-06', hora:'16h', l1:{t:'V',m:83}, l2:{t:'V',m:84} },
+  { n:94, fase:'oitavas', data:'2026-07-06', hora:'21h', l1:{t:'V',m:81}, l2:{t:'V',m:82} },
+  { n:95, fase:'oitavas', data:'2026-07-07', hora:'13h', l1:{t:'V',m:86}, l2:{t:'V',m:88} },
+  { n:96, fase:'oitavas', data:'2026-07-07', hora:'17h', l1:{t:'V',m:85}, l2:{t:'V',m:87} },
+  // Quartas (97–100)
+  { n:97,  fase:'quartas', data:'2026-07-09', hora:'17h', l1:{t:'V',m:89}, l2:{t:'V',m:90} },
+  { n:98,  fase:'quartas', data:'2026-07-10', hora:'16h', l1:{t:'V',m:93}, l2:{t:'V',m:94} },
+  { n:99,  fase:'quartas', data:'2026-07-11', hora:'18h', l1:{t:'V',m:91}, l2:{t:'V',m:92} },
+  { n:100, fase:'quartas', data:'2026-07-11', hora:'22h', l1:{t:'V',m:95}, l2:{t:'V',m:96} },
+  // Semifinais (101–102)
+  { n:101, fase:'semis', data:'2026-07-14', hora:'16h', l1:{t:'V',m:97}, l2:{t:'V',m:98} },
+  { n:102, fase:'semis', data:'2026-07-15', hora:'16h', l1:{t:'V',m:99}, l2:{t:'V',m:100} },
+  // 3º lugar (103) e Final (104)
+  { n:103, fase:'3lugar', data:'2026-07-18', hora:'18h', l1:{t:'L',m:101}, l2:{t:'L',m:102} },
+  { n:104, fase:'final',  data:'2026-07-19', hora:'16h', l1:{t:'V',m:101}, l2:{t:'V',m:102} },
+];
+// Os 8 jogos dos 32-avos que recebem um "melhor terceiro" (admin aloca).
+const THIRD_SLOTS = BRACKET.filter(b => b.l2.t === '3').map(b => ({ slot: b.l2.slot, jogo: b.n, vencedorGrupo: b.l1.g, grupos: b.l2.grupos }));
+function _jogoIdK(n) { return 'K' + n; }
+
+// ────────────────────────────────────────────────────────────
 // JOGOS DA FASE DE GRUPOS — Copa 2026 (72 jogos, idênticos à v1)
 // ────────────────────────────────────────────────────────────
 const JOGOS = [
@@ -258,6 +306,9 @@ function doPost(e) {
     else if (a === 'salvarResultadoMataMata')  resultado = salvarResultadoMataMata(body);
     else if (a === 'getResultadosGruposAdmin') resultado = getResultadosGruposAdmin(body.senha);
     else if (a === 'sincronizarGruposV1')      resultado = sincronizarGruposV1(body.senha);
+    else if (a === 'getChaveamentoAdmin')      resultado = getChaveamentoAdmin(body.senha);
+    else if (a === 'gerarChaveamento')         resultado = gerarChaveamento(body);
+    else if (a === 'definirTerceiros')         resultado = definirTerceiros(body);
     else if (a === 'getResultadosMataMataAdmin') resultado = getResultadosMataMataAdmin(body.senha);
     else if (a === 'getContagens')             resultado = getContagens(body.senha);
     else if (a === 'inicializar')              resultado = inicializar();
@@ -510,9 +561,108 @@ function calcularClassificacaoReal() {
   // 8 melhores terceiros (todos os grupos precisam estar completos para fechar)
   const todosCompletos = Object.keys(porGrupo).every(g => porGrupo[g].completo);
   terceiros.sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gf - a.gf || a.code.localeCompare(b.code));
-  const melhoresTerceiros = (todosCompletos ? terceiros.slice(0, 8) : []).map(t => t.code);
+  const melhoresTerceirosTop = (todosCompletos ? terceiros.slice(0, 8) : []);
+  const melhoresTerceiros = melhoresTerceirosTop.map(t => t.code);
+  const melhoresTerceirosDet = melhoresTerceirosTop.map(t => ({ grupo: t.grupo, code: t.code }));
 
-  return { porGrupo, melhoresTerceiros, todosCompletos };
+  return { porGrupo, melhoresTerceiros, melhoresTerceirosDet, todosCompletos };
+}
+
+// ════════════════════════════════════════════════════════════
+// CHAVEAMENTO AUTOMÁTICO
+// ════════════════════════════════════════════════════════════
+function _props() { return PropertiesService.getScriptProperties(); }
+function _getTerceiros() { try { return JSON.parse(_props().getProperty('terceiros') || '{}'); } catch (e) { return {}; } }
+function _autoBracketLigado() { return _props().getProperty('autoBracket') === '1'; }
+
+// Resolve W/R/3 (não depende de resultados do mata-mata)
+function _resolverLadoBase(lado, classif, thirds) {
+  if (lado.t === 'W') { const g = classif.porGrupo[lado.g]; return (g && g.completo) ? (g.pos1 || '') : ''; }
+  if (lado.t === 'R') { const g = classif.porGrupo[lado.g]; return (g && g.completo) ? (g.pos2 || '') : ''; }
+  if (lado.t === '3') { return thirds[String(lado.slot)] || ''; }
+  return ''; // V / L resolvidos depois
+}
+
+// Motor idempotente: cria/atualiza os jogos cujos DOIS times já são conhecidos.
+function atualizarChaveamento() {
+  const classif = calcularClassificacaoReal();
+  const mapResMM = _mapResultadosMataMata();
+  const thirds = _getTerceiros();
+
+  const teamsByN = {};
+  BRACKET.forEach(b => { teamsByN[b.n] = { t1: _resolverLadoBase(b.l1, classif, thirds), t2: _resolverLadoBase(b.l2, classif, thirds) }; });
+
+  // Passos iterativos para V (vencedor) e L (perdedor) de jogos anteriores
+  for (let pass = 0; pass < 6; pass++) {
+    BRACKET.forEach(b => {
+      [['l1', 't1'], ['l2', 't2']].forEach(par => {
+        const lado = b[par[0]], campo = par[1];
+        if (lado.t !== 'V' && lado.t !== 'L') return;
+        const res = mapResMM[_jogoIdK(lado.m)];
+        if (!res || !res.vencedor) return;
+        if (lado.t === 'V') { teamsByN[b.n][campo] = res.vencedor; }
+        else { const f = teamsByN[lado.m]; if (f && f.t1 && f.t2) teamsByN[b.n][campo] = (res.vencedor === f.t1 ? f.t2 : f.t1); }
+      });
+    });
+  }
+
+  const aba = _aba('JogosMataMata', ['JogoID','Fase','Data','Hora','Time1','Time2','Ordem','DataCriacao']);
+  const vals = aba.getDataRange().getValues();
+  const rowById = {};
+  for (let i = 1; i < vals.length; i++) if (vals[i][0]) rowById[String(vals[i][0])] = i + 1;
+
+  let criados = 0, atualizados = 0;
+  BRACKET.forEach(b => {
+    const t1 = teamsByN[b.n].t1, t2 = teamsByN[b.n].t2;
+    if (!t1 || !t2) return; // só materializa quando os dois lados são conhecidos
+    const id = _jogoIdK(b.n);
+    const ordem = (FASES[b.fase].ordem * 100) + b.n;
+    if (rowById[id]) {
+      const r = rowById[id];
+      const atual = vals[r - 1];
+      if (String(atual[4]) !== String(t1) || String(atual[5]) !== String(t2) || atual[1] !== b.fase || atual[2] !== b.data || atual[3] !== b.hora) {
+        aba.getRange(r, 2, 1, 5).setValues([[b.fase, b.data, b.hora, t1, t2]]);
+        atualizados++;
+      }
+    } else {
+      aba.appendRow([id, b.fase, b.data, b.hora, t1, t2, ordem, new Date().toISOString()]);
+      criados++;
+    }
+  });
+  return { criados, atualizados };
+}
+
+// Admin: dados para a tela de geração do chaveamento
+function getChaveamentoAdmin(senha) {
+  if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
+  const classif = calcularClassificacaoReal();
+  return {
+    ok: true,
+    todosCompletos: classif.todosCompletos,
+    porGrupo: classif.porGrupo,
+    melhoresTerceiros: classif.melhoresTerceirosDet,   // [{grupo,code}]
+    slots: THIRD_SLOTS,                                 // [{slot,jogo,vencedorGrupo,grupos}]
+    terceirosAtribuidos: _getTerceiros(),               // {slot: code}
+    autoBracket: _autoBracketLigado()
+  };
+}
+
+// Admin: salvar a alocação dos 8 terceiros e (re)gerar o chaveamento
+function definirTerceiros(body) {
+  if (!_adminOk(body.senha)) return { ok: false, msg: 'Acesso negado.' };
+  const atrib = body.atribuicoes || {};
+  _props().setProperty('terceiros', JSON.stringify(atrib));
+  _props().setProperty('autoBracket', '1');
+  const r = atualizarChaveamento();
+  return { ok: true, msg: 'Terceiros salvos. Chaveamento: ' + r.criados + ' criado(s), ' + r.atualizados + ' atualizado(s).' };
+}
+
+// Admin: ligar o chaveamento automático e gerar o que já dá
+function gerarChaveamento(body) {
+  if (!_adminOk(body.senha)) return { ok: false, msg: 'Acesso negado.' };
+  _props().setProperty('autoBracket', '1');
+  const r = atualizarChaveamento();
+  return { ok: true, msg: 'Chaveamento gerado: ' + r.criados + ' jogo(s) criado(s), ' + r.atualizados + ' atualizado(s).', criados: r.criados, atualizados: r.atualizados };
 }
 
 function _pontosCamada1(palp, classif) {
@@ -1055,11 +1205,17 @@ function salvarResultadoMataMata(body) {
   const aba = _aba('ResultadosMataMata', ['JogoID','Gols1','Gols2','Vencedor','DataRegistro']);
   const vals = aba.getDataRange().getValues();
   const agora = new Date().toISOString();
+  let achou = false;
   for (let i = 1; i < vals.length; i++) {
-    if (String(vals[i][0]) === String(body.jogoId)) { aba.getRange(i + 1, 2, 1, 4).setValues([[body.gols1, body.gols2, vencedor, agora]]); return { ok: true, msg: 'Resultado atualizado.' }; }
+    if (String(vals[i][0]) === String(body.jogoId)) { aba.getRange(i + 1, 2, 1, 4).setValues([[body.gols1, body.gols2, vencedor, agora]]); achou = true; break; }
   }
-  aba.appendRow([String(body.jogoId), body.gols1, body.gols2, vencedor, agora]);
-  return { ok: true, msg: 'Resultado registrado.' };
+  if (!achou) aba.appendRow([String(body.jogoId), body.gols1, body.gols2, vencedor, agora]);
+  // Avanço automático do vencedor para a próxima fase
+  let extra = '';
+  if (_autoBracketLigado()) {
+    try { const r = atualizarChaveamento(); if (r.criados) extra = ' ' + r.criados + ' confronto(s) da próxima fase liberado(s).'; } catch (e) {}
+  }
+  return { ok: true, msg: (achou ? 'Resultado atualizado.' : 'Resultado registrado.') + extra };
 }
 
 function getResultadosGruposAdmin(senha) {
