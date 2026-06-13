@@ -112,6 +112,10 @@ async function exigirLogin(redirecionar) {
 // ── Datas / horário (fuso de Brasília, igual à v1) ──────────
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // trava 5 min antes do apito
 function soData(d) { return String(d).slice(0, 10); } // aceita '2026-06-28' ou ISO completo do Sheets
+// O Sheets pode devolver a fase '32' como número e a data como datetime — normaliza tudo.
+function normJogosMM(arr) {
+  return (arr || []).map(j => Object.assign({}, j, { id: String(j.id), fase: String(j.fase), data: soData(j.data) }));
+}
 function horarioJogo(j) {
   const partes = String(j.hora).replace('h30', ':30').replace('h', ':00').split(':');
   const h = String(parseInt(partes[0], 10) || 0).padStart(2, '0');

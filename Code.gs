@@ -717,7 +717,7 @@ function _jogosMataMata() {
   const lista = [];
   for (let i = 1; i < vals.length; i++) {
     if (!vals[i][0]) continue;
-    lista.push({ id: String(vals[i][0]), fase: vals[i][1], data: _normData(vals[i][2]), hora: vals[i][3], time1: vals[i][4], time2: vals[i][5], ordem: vals[i][6] });
+    lista.push({ id: String(vals[i][0]), fase: String(vals[i][1]), data: _normData(vals[i][2]), hora: String(vals[i][3]), time1: vals[i][4], time2: vals[i][5], ordem: vals[i][6] });
   }
   lista.sort((a, b) => (FASES[a.fase] ? FASES[a.fase].ordem : 9) - (FASES[b.fase] ? FASES[b.fase].ordem : 9) || _kickoff(a.data, a.hora) - _kickoff(b.data, b.hora));
   return lista;

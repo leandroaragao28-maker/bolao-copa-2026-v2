@@ -92,7 +92,7 @@ async function init() {
     api({ action: 'getMeusPalpitesMataMata', token: getToken() })
   ]);
   if (!rmm.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
-  jogos = rmm.jogos;
+  jogos = normJogosMM(rmm.jogos);
   if (rp.ok && rp.palpites) rp.palpites.forEach(p => palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2, vencedor: p.vencedor });
 
   // gols da final

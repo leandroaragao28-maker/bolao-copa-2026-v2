@@ -330,7 +330,7 @@ async function salvarTerceiros() {
 // ── Mata-mata (confrontos + resultados) ──
 async function carregarMM() {
   const rmm = await api({ action: 'getJogosMataMata' });
-  if (rmm.ok) { _jogosMM = rmm.jogos; _resMM = rmm.resultados || {}; }
+  if (rmm.ok) { _jogosMM = normJogosMM(rmm.jogos); _resMM = rmm.resultados || {}; }
   const cont = document.getElementById('listaMM');
   if (!_jogosMM.length) { cont.innerHTML = '<div class="vazio">Nenhum confronto criado ainda.</div>'; return; }
   const porFase = {};

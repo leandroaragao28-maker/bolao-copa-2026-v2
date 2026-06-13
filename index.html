@@ -134,7 +134,7 @@ async function init() {
   }
 
   // Cards por fase do mata-mata
-  buildFaseCards(rmm.ok ? rmm.jogos : []);
+  buildFaseCards(rmm.ok ? normJogosMM(rmm.jogos) : []);
   aplicarTwemoji();
 }
 

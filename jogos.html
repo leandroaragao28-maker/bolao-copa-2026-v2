@@ -94,7 +94,7 @@ async function init() {
     api({ action: 'getResultadosMataMataPublico' })
   ]);
   if (rj.ok) JOGOS = rj.jogos;
-  if (rmm.ok) { JOGOS_MM = rmm.jogos; RESULTADOS_MM = rmm.resultados || {}; }
+  if (rmm.ok) { JOGOS_MM = normJogosMM(rmm.jogos); RESULTADOS_MM = rmm.resultados || {}; }
   if (rr.ok) RESULTADOS = rr.resultados || {};
   if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || RESULTADOS_MM;
 
@@ -247,7 +247,7 @@ function iniciarAutoRefresh() {
       ]);
       if (rr.ok) RESULTADOS = rr.resultados || {};
       if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || {};
-      if (rmm.ok) JOGOS_MM = rmm.jogos;
+      if (rmm.ok) JOGOS_MM = normJogosMM(rmm.jogos);
       renderProximos(); renderBracket(); renderTabela(); atualizarTimers();
     } catch (e) {}
   }, 60000);
