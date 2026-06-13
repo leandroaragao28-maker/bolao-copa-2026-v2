@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bolao-v2",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "3457", "."],
+      "port": 3457
+    }
+  ]
+}

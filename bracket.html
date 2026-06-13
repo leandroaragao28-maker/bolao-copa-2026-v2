@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Quem avança — Camada 2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">🗺️</span>
+  <div class="header-texto">
+    <h1>Camada 2 · Quem avança</h1>
+    <p>Escolha o vencedor de cada confronto</p>
+  </div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="regulamento.html">Regras</a>
+  </nav>
+</header>
+
+<button class="fab-salvar" id="fab" onclick="salvarBracketUI()">💾 Salvar <span class="fab-count" id="fabCount">0</span></button>
+
+<div class="container">
+
+  <div class="banner-info">
+    Acerte quem avança em cada fase. <strong>Cada fase trava antes do seu 1º jogo.</strong>
+    Pontos: 32-avos 2 · oitavas 4 · quartas 6 · semis 10 · <strong>campeão 15</strong>.
+  </div>
+
+  <!-- Gols da final (desempate) -->
+  <div class="card" id="cardGols">
+    <p class="card-titulo">🎯 Palpite: total de gols da FINAL</p>
+    <p class="form-hint" style="margin-bottom:.7rem;">Critério de desempate. Editável até o início do mata-mata. <span id="golsTrava"></span></p>
+    <div style="display:flex;gap:.6rem;align-items:center;">
+      <input type="number" id="golsFinal" min="0" max="20" placeholder="ex: 3" inputmode="numeric"
+             style="flex:1;padding:.7rem;border:2px solid var(--cinza-borda);border-radius:8px;font-size:1.1rem;font-weight:800;text-align:center;">
+      <button class="btn btn-secondary" id="btnGols" onclick="salvarGols()">Salvar</button>
+    </div>
+  </div>
+
+  <div id="conteudo"><div class="vazio">Carregando…</div></div>
+
+  <div style="height:1.5rem;"></div>
+</div>
+
+<script>
+let perfil = null;
+let jogos = [], travas = {}, fasesEncerradas = {}, resultados = {};
+let picks = {};
+let golsTravado = false;
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+  const [rmm, rb] = await Promise.all([
+    api({ action: 'getJogosMataMata' }),
+    api({ action: 'getBracket', token: getToken() })
+  ]);
+  if (!rmm.ok) { toast('Erro ao carregar confrontos.', 'erro'); return; }
+  jogos = rmm.jogos; travas = rmm.travas || {}; fasesEncerradas = rmm.fasesEncerradas || {}; resultados = rmm.resultados || {};
+  if (rb.ok) { picks = rb.picks || {}; }
+
+  // gols da final
+  const gv = (rb.ok ? rb.golsFinalPalpite : perfil.golsFinalPalpite);
+  if (gv !== '' && gv != null) document.getElementById('golsFinal').value = gv;
+  // trava dos gols = 1º jogo do mata-mata
+  if (jogos.length) {
+    const primeiro = jogos.slice().sort((a,b)=>horarioJogo(a)-horarioJogo(b))[0];
+    golsTravado = Date.now() >= prazoLimite(primeiro);
+  }
+  if (golsTravado) {
+    document.getElementById('golsFinal').disabled = true;
+    document.getElementById('btnGols').disabled = true;
+    document.getElementById('golsTrava').textContent = '🔒 Encerrado.';
+  }
+
+  render();
+  iniciarTimers();
+}
+
+function render() {
+  const cont = document.getElementById('conteudo');
+  if (!jogos.length) {
+    cont.innerHTML = '<div class="card"><div class="vazio">⏳ Os confrontos ainda não foram definidos.<br>Eles aparecem aqui conforme o admin libera cada fase.</div></div>';
+    return;
+  }
+  // agrupar por fase, na ordem oficial
+  const porFase = {};
+  jogos.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
+
+  let html = '';
+  FASES_ORDEM.forEach(fase => {
+    const lista = porFase[fase];
+    if (!lista || !lista.length) return;
+    const info = FASES_INFO[fase];
+    const travada = !!fasesEncerradas[fase];
+    const travaTs = travas[fase];
+    html += `<div class="fase-card ${travada ? 'travada' : ''}">
+      <div class="fase-head">
+        <span class="ft">${info.label}</span>
+        ${info.pontos > 0 ? `<span class="fp">${info.pontos} pts/acerto</span>` : ''}
+        <span class="fl ${travada ? 'fechada' : 'aberta'}" id="fl_${fase}">${travada ? '🔒 Fechada' : '⏱ aberta'}</span>
+      </div>
+      ${lista.map(j => confrontoHTML(j, travada)).join('')}
+    </div>`;
+  });
+  cont.innerHTML = html;
+  aplicarTwemoji(cont);
+}
+
+function confrontoHTML(j, travada) {
+  const res = resultados[j.id];
+  const pick = picks[j.id];
+  const venc = res ? res.vencedor : null;
+  function botao(time) {
+    const sel = pick === time;
+    let cls = 'escolha-btn';
+    if (venc) { // resultado conhecido
+      if (sel && time === venc) cls = 'acerto';
+      else if (sel && time !== venc) cls = 'erro';
+      else if (time === venc) cls = 'acerto';
+    } else if (sel) cls = 'sel';
+    return `<button class="${cls === 'escolha-btn' ? '' : cls}" ${(travada || venc) ? 'disabled' : ''}
+      onclick="escolher('${j.id}','${time}')">
+      <span class="bd">${bandeira(time)}</span><span>${nomeTime(time)}</span></button>`;
+  }
+  let rodape = '';
+  if (res) {
+    rodape = `<div class="cf-resultado">Placar ${res.gols1} × ${res.gols2} · avançou: ${nomeTime(venc)} ${pick ? (pick === venc ? '✅ +'+ (FASES_INFO[j.fase].pontos) : '❌') : ''}</div>`;
+  }
+  return `<div class="confronto" id="cf_${j.id}">
+    <div class="cf-meta">${fmtDiaMes(j.data)} · ${j.hora}${j.fase==='final'?' · 🏆 FINAL':''}</div>
+    <div class="escolha">${botao(j.time1)}${botao(j.time2)}</div>
+    ${rodape}
+  </div>`;
+}
+
+let sujo = 0;
+function escolher(jid, time) {
+  picks[jid] = time;
+  // re-render confronto
+  const j = jogos.find(x => x.id === jid);
+  const travada = !!fasesEncerradas[j.fase];
+  const el = document.getElementById('cf_' + jid);
+  if (el) { el.outerHTML = confrontoHTML(j, travada); aplicarTwemoji(document.getElementById('cf_' + jid)); }
+  sujo++;
+  document.getElementById('fabCount').textContent = sujo;
+  document.getElementById('fab').classList.add('visivel');
+}
+
+async function salvarBracketUI() {
+  const fab = document.getElementById('fab');
+  fab.disabled = true; fab.innerHTML = 'Salvando…';
+  const res = await api({ action: 'salvarBracket', token: getToken(), picks });
+  fab.disabled = false; fab.innerHTML = '💾 Salvar <span class="fab-count" id="fabCount">0</span>';
+  if (res.ok) { sujo = 0; fab.classList.remove('visivel'); toast(res.msg, 'ok'); }
+  else toast(res.msg || 'Erro.', 'erro');
+}
+
+async function salvarGols() {
+  const gols = document.getElementById('golsFinal').value;
+  if (gols === '') { toast('Informe um número de gols.', 'erro'); return; }
+  const btn = document.getElementById('btnGols');
+  btn.disabled = true; btn.textContent = '…';
+  const res = await api({ action: 'salvarGolsFinal', token: getToken(), gols });
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (res.ok) toast(res.msg, 'ok'); else toast(res.msg || 'Erro.', 'erro');
+}
+
+// Timers de fase (mostra contagem até a trava da próxima fase aberta)
+let timerInterval = null;
+function iniciarTimers() {
+  if (timerInterval) clearInterval(timerInterval);
+  atualizarTimers();
+  timerInterval = setInterval(atualizarTimers, 1000);
+}
+function atualizarTimers() {
+  FASES_ORDEM.forEach(fase => {
+    const el = document.getElementById('fl_' + fase);
+    if (!el) return;
+    const ts = travas[fase];
+    if (ts == null) return;
+    const rest = ts - Date.now();
+    if (rest <= 0) { el.className = 'fl fechada'; el.textContent = '🔒 Fechada'; fasesEncerradas[fase] = true; return; }
+    el.className = 'fl aberta';
+    el.textContent = '⏱ ' + formatarTempo(rest);
+  });
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

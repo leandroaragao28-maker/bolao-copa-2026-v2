@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Placares do mata-mata — Camada 3</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚽</span>
+  <div class="header-texto">
+    <h1>Camada 3 · Placares</h1>
+    <p>Mata-mata</p>
+  </div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="bracket.html">Bracket</a>
+    <a href="regulamento.html">Regras</a>
+  </nav>
+</header>
+
+<button class="fab-salvar" id="fab" onclick="salvarTudo()">💾 Salvar <span class="fab-count" id="fabCount">0</span></button>
+
+<div class="container">
+
+  <div class="banner-info">
+    Crave os placares do mata-mata. Pontos: <strong>15</strong> exato · <strong>10</strong> placar do vencedor ·
+    <strong>7,5</strong> empate (1 lado) · <strong>5</strong> placar do perdedor. Trava 5 min antes do apito.
+  </div>
+
+  <div id="bannerPagamento" class="banner-pagamento" style="display:none;">
+    <span>⏳ <strong>Pagamento pendente.</strong> Palpites contam após a confirmação.</span>
+    <a href="cadastro.html?pagar=1">💳 Pagar</a>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap;">
+    <span id="contador" style="font-size:.8rem;color:var(--cinza-sub);font-weight:700;"></span>
+    <span id="travasInfo" style="font-size:.75rem;color:var(--cinza-sub);"></span>
+  </div>
+
+  <div id="lista"><div class="vazio">Carregando…</div></div>
+  <div style="height:1.5rem;"></div>
+</div>
+
+<script>
+let perfil = null;
+let jogos = [];
+const palpites = {};        // editados nesta sessão
+const palpitesSalvos = {};  // já no servidor
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+  if (perfil.status !== 'APROVADO') document.getElementById('bannerPagamento').style.display = 'flex';
+
+  const [rmm, rp] = await Promise.all([
+    api({ action: 'getJogosMataMata' }),
+    api({ action: 'getMeusPalpitesMataMata', token: getToken() })
+  ]);
+  if (!rmm.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
+  jogos = rmm.jogos;
+  if (rp.ok && rp.palpites) rp.palpites.forEach(p => palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2 });
+
+  render();
+}
+
+function render() {
+  const cont = document.getElementById('lista');
+  if (!jogos.length) {
+    cont.innerHTML = '<div class="card"><div class="vazio">⏳ Nenhum jogo do mata-mata definido ainda.<br>Os confrontos aparecem aqui conforme as fases saem.</div></div>';
+    return;
+  }
+  cont.innerHTML = '';
+  const porFase = {};
+  jogos.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
+
+  let travados = 0;
+  FASES_ORDEM.forEach(fase => {
+    const lista = porFase[fase];
+    if (!lista || !lista.length) return;
+    cont.insertAdjacentHTML('beforeend', `<span class="grupo-titulo">${FASES_INFO[fase].label}</span>`);
+    lista.forEach(j => {
+      const travado = palpiteEncerrado(j);
+      if (travado) travados++;
+      const salvo = palpitesSalvos[j.id];
+      if (salvo) palpites[j.id] = { jogoId: j.id, gols1: salvo.gols1, gols2: salvo.gols2 };
+      const v1 = salvo ? salvo.gols1 : '', v2 = salvo ? salvo.gols2 : '';
+      const card = document.createElement('div');
+      card.className = 'jogo-card' + (travado ? ' travado' : '') + (salvo ? ' tem-palpite' : '');
+      card.id = 'card_' + j.id;
+      card.innerHTML = `
+        <div class="time"><span class="bandeira">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
+        <div style="text-align:center;">
+          <div class="jogo-meta">${fmtDiaMes(j.data)} ${j.hora}</div>
+          <div class="jogo-timer" id="timer_${j.id}"></div>
+          <div class="placar-inputs" style="flex-direction:row;margin-top:.3rem;">
+            <input type="number" min="0" max="30" id="g1_${j.id}" value="${v1}" placeholder="?" inputmode="numeric" ${travado ? 'disabled' : `oninput="reg('${j.id}')"`}>
+            <span class="placar-sep">×</span>
+            <input type="number" min="0" max="30" id="g2_${j.id}" value="${v2}" placeholder="?" inputmode="numeric" ${travado ? 'disabled' : `oninput="reg('${j.id}')"`}>
+          </div>
+          ${salvo ? `<div class="palpite-salvo${travado ? ' travado-txt' : ''}">✓ salvo: ${salvo.gols1} × ${salvo.gols2}</div>` : ''}
+        </div>
+        <div class="time time-direita"><span>${nomeTime(j.time2)}</span><span class="bandeira">${bandeira(j.time2)}</span></div>`;
+      cont.appendChild(card);
+    });
+  });
+
+  if (travados > 0) document.getElementById('travasInfo').textContent = `🔒 ${travados} jogo(s) encerrado(s)`;
+  atualizarContador();
+  aplicarTwemoji(cont);
+  iniciarTimers();
+}
+
+function reg(id) {
+  const g1 = document.getElementById('g1_' + id).value;
+  const g2 = document.getElementById('g2_' + id).value;
+  const card = document.getElementById('card_' + id);
+  if (g1 !== '' && g2 !== '') { palpites[id] = { jogoId: id, gols1: parseInt(g1), gols2: parseInt(g2) }; card.classList.add('tem-palpite'); }
+  else { delete palpites[id]; card.classList.remove('tem-palpite'); }
+  atualizarContador();
+}
+
+function atualizarContador() {
+  const total = jogos.length;
+  const preenchidos = Object.keys(palpites).length;
+  const novos = Object.keys(palpites).filter(id => {
+    const s = palpitesSalvos[id], p = palpites[id];
+    return !s || s.gols1 !== p.gols1 || s.gols2 !== p.gols2;
+  }).length;
+  document.getElementById('contador').textContent = `${preenchidos} de ${total} jogos preenchidos`;
+  const fab = document.getElementById('fab');
+  document.getElementById('fabCount').textContent = novos;
+  if (novos > 0) fab.classList.add('visivel'); else fab.classList.remove('visivel');
+}
+
+async function salvarTudo() {
+  const lista = Object.values(palpites).filter(p => { const j = jogos.find(x => x.id == p.jogoId); return j && !palpiteEncerrado(j); });
+  if (!lista.length) { toast('Nenhum palpite novo para salvar.', 'aviso'); return; }
+  const fab = document.getElementById('fab');
+  fab.disabled = true; fab.innerHTML = 'Salvando…';
+  const res = await api({ action: 'salvarPalpitesMataMata', token: getToken(), palpites: lista });
+  fab.disabled = false; fab.innerHTML = '💾 Salvar <span class="fab-count" id="fabCount">0</span>';
+  if (res.ok) {
+    lista.forEach(p => {
+      palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2 };
+      const card = document.getElementById('card_' + p.jogoId);
+      if (!card) return;
+      const sd = card.querySelector('.palpite-salvo');
+      const txt = `✓ salvo: ${p.gols1} × ${p.gols2}`;
+      if (sd) sd.textContent = txt;
+      else { const c = card.querySelector('[style*="text-align:center"]'); if (c) c.insertAdjacentHTML('beforeend', `<div class="palpite-salvo">${txt}</div>`); }
+    });
+    atualizarContador();
+    toast(res.msg, 'ok');
+  } else toast(res.msg || 'Erro ao salvar.', 'erro');
+}
+
+// Timers
+let timerInterval = null;
+function iniciarTimers() { if (timerInterval) clearInterval(timerInterval); atualizarTimers(); timerInterval = setInterval(atualizarTimers, 1000); }
+function atualizarTimers() {
+  jogos.forEach(j => {
+    const el = document.getElementById('timer_' + j.id);
+    if (!el) return;
+    const rest = prazoLimite(j) - Date.now();
+    if (rest <= 0) {
+      const card = document.getElementById('card_' + j.id);
+      if (card && !card.classList.contains('travado')) {
+        card.classList.add('travado');
+        ['g1_','g2_'].forEach(p => { const i = document.getElementById(p + j.id); if (i) { i.disabled = true; i.removeAttribute('oninput'); } });
+      }
+      el.className = 'jogo-timer encerrado'; el.textContent = '🔒 encerrado'; return;
+    }
+    el.textContent = '⏱ ' + formatarTempo(rest);
+    el.className = rest <= 10*60*1000 ? 'jogo-timer muito-urgente' : rest <= 60*60*1000 ? 'jogo-timer urgente' : 'jogo-timer';
+  });
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

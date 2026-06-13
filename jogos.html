@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Jogos & Tabela — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .dia-label { font-size:.7rem; font-weight:800; color:var(--azul); background:var(--azul-fundo); border-radius:6px; padding:.25rem .6rem; display:inline-block; margin:.5rem 0; }
+    .jcard { background:var(--branco); border:2px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:.7rem .9rem; margin-bottom:.55rem; }
+    .jcard.destaque { border-color:var(--ouro); background:var(--ouro-claro); }
+    .jc-main { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.5rem; }
+    .jc-main .t { display:flex; align-items:center; gap:.35rem; font-weight:700; font-size:.85rem; line-height:1.2; }
+    .jc-main .t.right { justify-content:flex-end; text-align:right; }
+    .jc-main .t .bd { font-size:1.4rem; flex-shrink:0; }
+    .t-centro { text-align:center; min-width:64px; }
+    .t-centro .grp { font-size:.6rem; color:var(--cinza-sub); font-weight:700; }
+    .t-centro .hora { font-size:1.05rem; font-weight:900; color:var(--azul); }
+    .t-centro .placar-final { font-size:1.3rem; font-weight:900; color:var(--azul); line-height:1.1; }
+    .t-centro .placar-final span { color:var(--cinza-sub); font-size:.9rem; }
+    .rod-linha { display:flex; align-items:center; justify-content:flex-end; margin-top:.5rem; padding-top:.45rem; border-top:1px solid var(--cinza-fundo); }
+    .timer { font-size:.68rem; font-weight:700; color:var(--cinza-sub); }
+    .timer.urg { color:var(--ouro-escuro); }
+    .timer.muito { color:#fff; background:var(--vermelho); padding:.1rem .4rem; border-radius:4px; }
+    .timer.enc { color:var(--cinza-sub); opacity:.8; }
+    .pills { display:flex; gap:.4rem; overflow-x:auto; padding-bottom:.4rem; margin-bottom:.6rem; }
+    .pill { flex-shrink:0; background:var(--branco); color:var(--cinza-sub); font-weight:800; font-size:.82rem; padding:.35rem .8rem; border-radius:16px; border:1.5px solid var(--cinza-borda); cursor:pointer; }
+    .pill.ativa { background:var(--azul); color:#fff; border-color:var(--azul); }
+    .tabela-wrap { background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-sm); overflow:hidden; }
+    table.classif { width:100%; border-collapse:collapse; font-size:.82rem; table-layout:fixed; }
+    table.classif th { background:var(--azul); color:#fff; padding:.5rem .15rem; font-size:.66rem; font-weight:700; }
+    table.classif th.time-col, table.classif td.time-col { text-align:left; padding-left:.5rem; }
+    table.classif td { padding:.5rem .15rem; text-align:center; border-top:1px solid #ECEFF1; }
+    table.classif td.time-col { font-weight:700; }
+    table.classif td .bd { font-size:1.1rem; vertical-align:-3px; margin-right:.15rem; }
+    table.classif td.pos { font-weight:900; color:var(--cinza-sub); }
+    table.classif td.pts { font-weight:900; color:var(--azul); }
+    table.classif tr.zona { background:#F1F8E9; }
+    table.classif tr.zona td.pos { color:#2E7D32; }
+    .mm-fase { font-weight:800; font-size:.8rem; color:#6A1B9A; margin:1rem 0 .4rem; }
+    .mm-jogo { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.4rem; background:var(--branco); border:2px solid var(--cinza-borda); border-radius:8px; padding:.5rem .7rem; margin-bottom:.4rem; font-size:.82rem; }
+    .mm-jogo .mt { display:flex; align-items:center; gap:.3rem; font-weight:700; }
+    .mm-jogo .mt.r { justify-content:flex-end; text-align:right; }
+    .mm-jogo .mt.venceu { color:var(--verde); }
+    .mm-c { text-align:center; min-width:54px; }
+    .mm-c .h { font-size:.62rem; color:var(--cinza-sub); }
+    .mm-c .p { font-weight:900; color:var(--azul); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📅</span>
+  <div class="header-texto"><h1>Jogos &amp; Tabela</h1></div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="bracket.html">Bracket</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="auto-refresh"><span class="dot"></span> Atualização automática a cada 1 minuto</div>
+
+  <div class="sec-titulo">Próximos jogos</div>
+  <div id="proximos"><div class="vazio">Carregando…</div></div>
+
+  <div class="sec-titulo">Chaveamento (mata-mata)</div>
+  <div id="bracket"><div class="vazio">Aguardando definição dos confrontos…</div></div>
+
+  <div class="sec-titulo">Classificação dos grupos</div>
+  <div class="pills" id="pills"></div>
+  <div class="tabela-wrap" id="tabela"><div class="vazio">Carregando…</div></div>
+
+</div>
+
+<script>
+let JOGOS = [], JOGOS_MM = [], RESULTADOS = {}, RESULTADOS_MM = {};
+let GRUPOS = {}, grupoAtivo = 'A';
+let refreshInterval = null, timerInterval = null;
+
+async function init() {
+  await exigirLogin();
+  const [rj, rmm, rr, rrmm] = await Promise.all([
+    api({ action: 'getJogos' }),
+    api({ action: 'getJogosMataMata' }),
+    api({ action: 'getResultadosPublico' }),
+    api({ action: 'getResultadosMataMataPublico' })
+  ]);
+  if (rj.ok) JOGOS = rj.jogos;
+  if (rmm.ok) { JOGOS_MM = rmm.jogos; RESULTADOS_MM = rmm.resultados || {}; }
+  if (rr.ok) RESULTADOS = rr.resultados || {};
+  if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || RESULTADOS_MM;
+
+  construirGrupos();
+  if (!GRUPOS[grupoAtivo]) grupoAtivo = Object.keys(GRUPOS).sort()[0] || 'A';
+  renderProximos(); renderBracket(); renderPills(); renderTabela();
+  iniciarTimers(); iniciarAutoRefresh();
+}
+
+function construirGrupos() {
+  GRUPOS = {};
+  JOGOS.forEach(j => { if (!GRUPOS[j.grupo]) GRUPOS[j.grupo] = []; [j.time1, j.time2].forEach(t => { if (GRUPOS[j.grupo].indexOf(t) < 0) GRUPOS[j.grupo].push(t); }); });
+}
+
+function dataBR(d) { return d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+function rotuloDia(s) { const p = s.split('-'); return p[2] + '/' + p[1]; }
+
+function renderProximos() {
+  const hoje = dataBR(new Date());
+  const amanha = dataBR(new Date(Date.now() + 86400000));
+  const grupo = JOGOS.map(j => ({ ...j, _mm: false, _res: RESULTADOS[j.id] }));
+  const mm = JOGOS_MM.map(j => ({ ...j, _mm: true, _res: RESULTADOS_MM[j.id], grupo: FASES_INFO[j.fase] ? FASES_INFO[j.fase].curto : j.fase }));
+  const lista = grupo.concat(mm).filter(j => j.data === hoje || j.data === amanha).sort((a, b) => horarioJogo(a) - horarioJogo(b));
+  const cont = document.getElementById('proximos');
+  if (!lista.length) { cont.innerHTML = '<div class="vazio">Nenhum jogo hoje ou amanhã.</div>'; return; }
+  const agora = Date.now();
+  const destaque = lista.find(j => horarioJogo(j).getTime() > agora);
+  const destaqueId = destaque ? (destaque._mm ? 'mm' : '') + destaque.id : null;
+  let html = '', diaAtual = '';
+  lista.forEach(j => {
+    const dia = (j.data === hoje ? 'HOJE · ' : 'AMANHÃ · ') + rotuloDia(j.data);
+    if (dia !== diaAtual) { diaAtual = dia; html += `<div class="dia-label">${dia}</div>`; }
+    html += cardJogo(j, ((j._mm ? 'mm' : '') + j.id) === destaqueId);
+  });
+  cont.innerHTML = html;
+  aplicarTwemoji(cont);
+}
+
+function cardJogo(j, destaque) {
+  const r = j._res;
+  const uid = (j._mm ? 'mm' : '') + j.id;
+  let centro, rodape;
+  if (r) {
+    centro = `<div class="grp">${j._mm ? FASES_INFO[j.fase].curto : 'Grupo ' + j.grupo}</div><div class="placar-final">${r.gols1} <span>×</span> ${r.gols2}</div>`;
+    rodape = '';
+  } else {
+    centro = `<div class="grp">${j._mm ? FASES_INFO[j.fase].curto : 'Grupo ' + j.grupo}</div><div class="hora">${j.hora}</div>`;
+    rodape = `<div class="rod-linha"><span class="timer" id="t_${uid}"></span></div>`;
+  }
+  return `<div class="jcard${destaque ? ' destaque' : ''}">
+    <div class="jc-main">
+      <div class="t left"><span class="bd">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
+      <div class="t-centro">${centro}</div>
+      <div class="t right"><span>${nomeTime(j.time2)}</span><span class="bd">${bandeira(j.time2)}</span></div>
+    </div>${rodape}</div>`;
+}
+
+function renderBracket() {
+  const cont = document.getElementById('bracket');
+  if (!JOGOS_MM.length) { cont.innerHTML = '<div class="vazio">Os confrontos do mata-mata aparecem aqui conforme as fases saem.</div>'; return; }
+  const porFase = {};
+  JOGOS_MM.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
+  let html = '';
+  FASES_ORDEM.forEach(fase => {
+    const lista = porFase[fase];
+    if (!lista || !lista.length) return;
+    html += `<div class="mm-fase">${FASES_INFO[fase].label}</div>`;
+    lista.forEach(j => {
+      const r = RESULTADOS_MM[j.id];
+      const venc = r ? r.vencedor : null;
+      html += `<div class="mm-jogo">
+        <div class="mt ${venc === j.time1 ? 'venceu' : ''}"><span class="bd">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
+        <div class="mm-c">${r ? `<div class="p">${r.gols1}×${r.gols2}</div>` : `<div class="h">${fmtDiaMes(j.data)}</div><div class="h">${j.hora}</div>`}</div>
+        <div class="mt r ${venc === j.time2 ? 'venceu' : ''}"><span>${nomeTime(j.time2)}</span><span class="bd">${bandeira(j.time2)}</span></div>
+      </div>`;
+    });
+  });
+  cont.innerHTML = html;
+  aplicarTwemoji(cont);
+}
+
+// ── FIFA ordering (igual à v1) ──
+function calcStats(codes, jogosG) {
+  const st = {};
+  codes.forEach(c => st[c] = { code: c, pts: 0, j: 0, v: 0, e: 0, d: 0, gf: 0, ga: 0, sg: 0 });
+  jogosG.forEach(j => {
+    const r = RESULTADOS[j.id]; if (!r) return;
+    const g1 = parseInt(r.gols1), g2 = parseInt(r.gols2); if (isNaN(g1) || isNaN(g2)) return;
+    const a = st[j.time1], b = st[j.time2]; if (!a || !b) return;
+    a.j++; b.j++; a.gf += g1; a.ga += g2; b.gf += g2; b.ga += g1;
+    if (g1 > g2) { a.v++; a.pts += 3; b.d++; } else if (g2 > g1) { b.v++; b.pts += 3; a.d++; } else { a.e++; b.e++; a.pts++; b.pts++; }
+  });
+  Object.values(st).forEach(s => s.sg = s.gf - s.ga);
+  return st;
+}
+function ordenarGrupo(arr, jogosG) {
+  const cmp = (a, b) => b.pts - a.pts || b.sg - a.sg || b.gf - a.gf;
+  arr = arr.slice().sort(cmp);
+  const out = []; let i = 0;
+  while (i < arr.length) {
+    let k = i + 1;
+    while (k < arr.length && arr[k].pts === arr[i].pts && arr[k].sg === arr[i].sg && arr[k].gf === arr[i].gf) k++;
+    const emp = arr.slice(i, k);
+    if (emp.length > 1) {
+      const codes = emp.map(t => t.code);
+      const h2h = calcStats(codes, jogosG.filter(g => codes.indexOf(g.time1) >= 0 && codes.indexOf(g.time2) >= 0));
+      emp.sort((a, b) => { const ha = h2h[a.code], hb = h2h[b.code]; return hb.pts - ha.pts || hb.sg - ha.sg || hb.gf - ha.gf || a.code.localeCompare(b.code); });
+    }
+    out.push.apply(out, emp); i = k;
+  }
+  return out;
+}
+function renderPills() {
+  document.getElementById('pills').innerHTML = Object.keys(GRUPOS).sort().map(g => `<span class="pill${g === grupoAtivo ? ' ativa' : ''}" onclick="selGrupo('${g}')">${g}</span>`).join('');
+}
+function selGrupo(g) { grupoAtivo = g; renderPills(); renderTabela(); }
+function renderTabela() {
+  const codes = GRUPOS[grupoAtivo] || [];
+  const jogosG = JOGOS.filter(j => j.grupo === grupoAtivo);
+  const arr = ordenarGrupo(Object.values(calcStats(codes, jogosG)), jogosG);
+  const corpo = arr.map((s, i) => {
+    const sg = s.sg > 0 ? '+' + s.sg : (s.sg < 0 ? '−' + Math.abs(s.sg) : '0');
+    return `<tr class="${i < 2 ? 'zona' : ''}"><td class="pos">${i + 1}</td><td class="time-col"><span class="bd">${bandeira(s.code)}</span>${s.code}</td><td class="pts">${s.pts}</td><td>${s.j}</td><td>${s.v}</td><td>${s.e}</td><td>${s.d}</td><td>${sg}</td></tr>`;
+  }).join('');
+  document.getElementById('tabela').innerHTML = `<table class="classif"><thead><tr><th style="width:10%;">#</th><th class="time-col" style="width:34%;">Time</th><th style="width:11%;">P</th><th style="width:9%;">J</th><th style="width:9%;">V</th><th style="width:9%;">E</th><th style="width:9%;">D</th><th style="width:9%;">SG</th></tr></thead><tbody>${corpo}</tbody></table>`;
+  aplicarTwemoji(document.getElementById('tabela'));
+}
+
+function iniciarTimers() { if (timerInterval) clearInterval(timerInterval); atualizarTimers(); timerInterval = setInterval(atualizarTimers, 1000); }
+function atualizarTimers() {
+  const todos = JOGOS.map(j => ({ ...j, _mm: false })).concat(JOGOS_MM.map(j => ({ ...j, _mm: true })));
+  todos.forEach(j => {
+    const uid = (j._mm ? 'mm' : '') + j.id;
+    const el = document.getElementById('t_' + uid); if (!el) return;
+    const rest = prazoLimite(j) - Date.now();
+    if (rest <= 0) { el.className = 'timer enc'; el.textContent = '🔒 encerrado'; return; }
+    el.textContent = '⏱ ' + formatarTempo(rest);
+    el.className = rest <= 10*60*1000 ? 'timer muito' : rest <= 60*60*1000 ? 'timer urg' : 'timer';
+  });
+}
+function iniciarAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      const [rr, rrmm, rmm] = await Promise.all([
+        apiSilent({ action: 'getResultadosPublico' }),
+        apiSilent({ action: 'getResultadosMataMataPublico' }),
+        apiSilent({ action: 'getJogosMataMata' })
+      ]);
+      if (rr.ok) RESULTADOS = rr.resultados || {};
+      if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || {};
+      if (rmm.ok) JOGOS_MM = rmm.jogos;
+      renderProximos(); renderBracket(); renderTabela(); atualizarTimers();
+    } catch (e) {}
+  }, 60000);
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html" class="ativo"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

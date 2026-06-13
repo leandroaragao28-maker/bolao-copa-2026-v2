@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .home-hero { background: linear-gradient(150deg,#1A237E 0%,#283593 55%,#3949AB 100%); border-radius: var(--radius); padding: 1.4rem; color: #fff; margin-bottom: 1rem; position: relative; overflow: hidden; }
+    .home-hero::before { content: '🏆'; position: absolute; font-size: 9rem; opacity: .07; right: -1.5rem; top: -1.5rem; }
+    .home-hero .edicao { font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+    .home-hero h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: -.03em; line-height: 1.1; margin: .2rem 0 .1rem; }
+    .home-hero .ola { font-size: .9rem; opacity: .9; }
+    .prem-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; margin-top: 1rem; }
+    .prem-card { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: .6rem .4rem; text-align: center; }
+    .prem-card .pc-emoji { font-size: 1.2rem; display: block; }
+    .prem-card .pc-pct { font-size: .6rem; opacity: .75; font-weight: 700; text-transform: uppercase; }
+    .prem-card .pc-valor { font-size: .92rem; font-weight: 900; color: #FFD54F; margin-top: .15rem; }
+    .camada-card { display: block; text-decoration: none; color: inherit; background: var(--branco); border: 2px solid var(--cinza-borda); border-radius: var(--radius); padding: 1rem; margin-bottom: .8rem; transition: all .15s; }
+    .camada-card:hover { border-color: var(--azul-palido); box-shadow: var(--sombra); }
+    .cc-top { display: flex; align-items: center; gap: .7rem; margin-bottom: .5rem; }
+    .cc-emoji { font-size: 1.8rem; }
+    .cc-tit { font-weight: 800; font-size: 1rem; color: var(--azul); }
+    .cc-sub { font-size: .76rem; color: var(--cinza-sub); }
+    .cc-status { margin-left: auto; font-size: .68rem; font-weight: 800; padding: .25rem .6rem; border-radius: 20px; white-space: nowrap; }
+    .cc-status.aberto { background: #E8F5E9; color: #1B5E20; }
+    .cc-status.fechado { background: #FFEBEE; color: var(--vermelho); }
+    .cc-status.espera { background: #FFF3E0; color: #BF360C; }
+    .cc-desc { font-size: .78rem; color: var(--cinza-sub); line-height: 1.4; }
+    .meu-status { display: flex; align-items: center; gap: .6rem; background: var(--branco); border-radius: var(--radius-sm); padding: .7rem .9rem; box-shadow: var(--sombra); margin-bottom: 1rem; }
+    .mini-rk { background: var(--branco); border-radius: var(--radius); box-shadow: var(--sombra); padding: 1rem; margin-bottom: 1rem; }
+    .mr-item { display: flex; align-items: center; gap: .55rem; padding: .45rem .1rem; border-bottom: 1px solid var(--cinza-fundo); }
+    .mr-item:last-child { border-bottom: none; }
+    .mr-pos { font-size: 1.1rem; width: 1.6rem; text-align: center; }
+    .mr-nome { flex: 1; min-width: 0; font-weight: 700; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mr-pts { font-weight: 900; color: var(--azul); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🏆</span>
+  <div class="header-texto">
+    <h1>Bolão Copa 2026</h1>
+    <p>v2 · Fase Eliminatória</p>
+  </div>
+  <nav>
+    <a href="ranking.html">Ranking</a>
+    <a href="regulamento.html">Regras</a>
+    <a onclick="logout()" style="cursor:pointer;">Sair</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="home-hero">
+    <div class="edicao">Copa do Mundo 2026 · 3 camadas de pontos</div>
+    <h1>Mata-mata</h1>
+    <div class="ola" id="ola">Carregando…</div>
+    <div class="prem-cards">
+      <div class="prem-card"><span class="pc-emoji">🥇</span><div class="pc-pct">Campeão 60%</div><div class="pc-valor" id="pc1">R$ —</div></div>
+      <div class="prem-card"><span class="pc-emoji">🥈</span><div class="pc-pct">Vice 30%</div><div class="pc-valor" id="pc2">R$ —</div></div>
+      <div class="prem-card"><span class="pc-emoji">👥</span><div class="pc-pct">Aprovados</div><div class="pc-valor" id="pc3">—</div></div>
+    </div>
+  </div>
+
+  <!-- Pagamento pendente -->
+  <div id="bannerPagamento" class="banner-pagamento" style="display:none;">
+    <span>⏳ <strong>Pagamento pendente.</strong> Sua pontuação conta após a confirmação.</span>
+    <a href="cadastro.html?pagar=1">💳 Pagar</a>
+  </div>
+
+  <!-- 3 camadas -->
+  <div class="sec-titulo">Onde palpitar</div>
+
+  <a class="camada-card" href="classificacao-grupos.html">
+    <div class="cc-top">
+      <span class="cc-emoji">📊</span>
+      <div><div class="cc-tit">Camada 1 · Classificação dos grupos</div><div class="cc-sub">1º, 2º e 3º de cada grupo + 8 terceiros</div></div>
+      <span class="cc-status" id="stC1">…</span>
+    </div>
+    <div class="cc-desc">Preveja como cada grupo termina. Trava antes da 3ª rodada (23/jun). Vale até <strong>10 pts por grupo</strong> + 2 por terceiro certo.</div>
+  </a>
+
+  <a class="camada-card" href="bracket.html">
+    <div class="cc-top">
+      <span class="cc-emoji">🗺️</span>
+      <div><div class="cc-tit">Camada 2 · Quem avança</div><div class="cc-sub">Escolha o vencedor de cada confronto</div></div>
+      <span class="cc-status" id="stC2">…</span>
+    </div>
+    <div class="cc-desc">Acerte quem passa em cada fase. Trava <strong>por fase</strong>. Vale 2 → 4 → 6 → 10 → 15 pts (campeão).</div>
+  </a>
+
+  <a class="camada-card" href="palpites.html">
+    <div class="cc-top">
+      <span class="cc-emoji">⚽</span>
+      <div><div class="cc-tit">Camada 3 · Placares do mata-mata</div><div class="cc-sub">O placar de cada jogo eliminatório</div></div>
+      <span class="cc-status" id="stC3">…</span>
+    </div>
+    <div class="cc-desc">Crave os placares (15 / 10 / 7,5 / 5 pts). Corte por jogo, trava 5 min antes do apito.</div>
+  </a>
+
+  <!-- Prévia ranking -->
+  <div class="mini-rk">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+      <strong style="font-size:.9rem;color:var(--azul);">🏆 Prévia do ranking</strong>
+      <a href="ranking.html" style="font-size:.75rem;color:var(--azul);font-weight:700;text-decoration:none;">Ver tudo →</a>
+    </div>
+    <div id="miniRanking"><div class="vazio">Carregando…</div></div>
+  </div>
+
+</div>
+
+<script>
+let perfil = null;
+
+function brl(v) { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+  document.getElementById('ola').innerHTML = 'Olá, <strong>' + perfil.nome + '</strong>' +
+    (perfil.status === 'APROVADO' ? ' ✅' : ' <span style="opacity:.85;">(pagamento pendente)</span>');
+  if (perfil.status !== 'APROVADO') document.getElementById('bannerPagamento').style.display = 'flex';
+
+  const [rk, rj, rmm] = await Promise.all([
+    api({ action: 'getRanking' }),
+    api({ action: 'getJogos' }),
+    api({ action: 'getJogosMataMata' })
+  ]);
+
+  // Premiação + preview
+  if (rk.ok) {
+    document.getElementById('pc1').textContent = brl(rk.premiacao.campeao);
+    document.getElementById('pc2').textContent = brl(rk.premiacao.vice);
+    document.getElementById('pc3').textContent = rk.totalParticipantes ?? '0';
+    preencherMini(rk.ranking || []);
+  }
+
+  // Status Camada 1
+  if (rj.ok) {
+    const aberto = Date.now() < rj.travaCamada1;
+    setStatus('stC1', aberto, aberto ? 'Aberto' : 'Encerrado');
+  }
+
+  // Status Camadas 2 e 3 (dependem de confrontos criados pelo admin)
+  if (rmm.ok) {
+    const temJogos = rmm.jogos.length > 0;
+    if (!temJogos) {
+      setStatus('stC2', null, 'Aguardando sorteio');
+      setStatus('stC3', null, 'Aguardando jogos');
+    } else {
+      // C2: alguma fase ainda aberta?
+      const algumaFaseAberta = Object.keys(rmm.fasesEncerradas).some(f => !rmm.fasesEncerradas[f]) || rmm.jogos.some(j => !rmm.fasesEncerradas[j.fase]);
+      setStatus('stC2', algumaFaseAberta, algumaFaseAberta ? 'Aberto' : 'Encerrado');
+      // C3: algum jogo ainda não iniciado?
+      const algumAberto = rmm.jogos.some(j => Date.now() < prazoLimite(j));
+      setStatus('stC3', algumAberto, algumAberto ? 'Aberto' : 'Encerrado');
+    }
+  }
+  aplicarTwemoji();
+}
+
+function setStatus(id, aberto, txt) {
+  const el = document.getElementById(id);
+  el.textContent = txt;
+  el.className = 'cc-status ' + (aberto === null ? 'espera' : aberto ? 'aberto' : 'fechado');
+}
+
+function preencherMini(ranking) {
+  const el = document.getElementById('miniRanking');
+  const top = ranking.slice(0, 5);
+  const medalhas = ['🥇','🥈','🥉'];
+  let html = '';
+  if (!top.length) {
+    html = '<div class="vazio">Ranking disponível conforme os resultados saem.</div>';
+  } else {
+    html = top.map((r, i) => `
+      <div class="mr-item" style="${r.id === perfil.id ? 'background:var(--azul-fundo);border-radius:8px;' : ''}">
+        <span class="mr-pos">${i < 3 ? medalhas[i] : r.posicao}</span>
+        <span class="mr-nome">${r.nome}</span>
+        <span class="mr-pts">${r.pontos.toFixed(1)}</span>
+      </div>`).join('');
+    const eu = ranking.find(r => r.id === perfil.id);
+    if (eu && eu.posicao > 5) {
+      html += `<div class="mr-item" style="background:var(--azul-fundo);border-radius:8px;margin-top:.3rem;">
+        <span class="mr-pos">${eu.posicao}</span><span class="mr-nome">${eu.nome} (você)</span><span class="mr-pts">${eu.pontos.toFixed(1)}</span></div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html" class="ativo"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

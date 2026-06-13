@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Entrar — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚽</span>
+  <div class="header-texto">
+    <h1>Bolão Copa 2026</h1>
+    <p>v2 · Fase Eliminatória</p>
+  </div>
+</header>
+
+<div class="container" style="max-width:420px;">
+
+  <div class="hero" style="margin-bottom:1rem;">
+    <h2>Bem-vindo de volta</h2>
+    <p>Acesse com seu e-mail e senha</p>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="cardLogin" class="card">
+    <p class="card-titulo">🔑 Entrar</p>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="email" placeholder="seu@email.com" inputmode="email" autocomplete="email"
+             onkeydown="if(event.key==='Enter')document.getElementById('senha').focus()">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')entrar()">
+    </div>
+    <button class="btn btn-primary btn-block" id="btnEntrar" onclick="entrar()">Entrar →</button>
+    <div style="text-align:center;margin-top:.9rem;font-size:.85rem;">
+      <a onclick="abrir('cardReset')" style="color:var(--azul);font-weight:700;cursor:pointer;">Esqueci minha senha</a>
+    </div>
+    <div style="text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--cinza-borda);font-size:.88rem;color:var(--cinza-sub);">
+      Ainda não tem conta?<br>
+      <a href="cadastro.html" class="btn btn-ouro btn-block" style="margin-top:.6rem;">⚽ Criar minha conta</a>
+    </div>
+  </div>
+
+  <!-- RESET: pedir código -->
+  <div id="cardReset" class="card" style="display:none;">
+    <p class="card-titulo">🔍 Recuperar senha</p>
+    <p class="form-hint" style="margin-bottom:.8rem;">Enviaremos um código de 6 dígitos para o seu e-mail cadastrado.</p>
+    <div class="form-group">
+      <label>E-mail cadastrado</label>
+      <input type="email" id="emailReset" placeholder="seu@email.com" inputmode="email" autocomplete="email">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="pedirCodigo()">Enviar código</button>
+    <button class="btn btn-secondary btn-block" style="margin-top:.5rem;" onclick="abrir('cardLogin')">← Voltar</button>
+  </div>
+
+  <!-- RESET: redefinir -->
+  <div id="cardRedefinir" class="card" style="display:none;">
+    <p class="card-titulo">🔐 Definir nova senha</p>
+    <div class="banner-info">Digite o código que enviamos para <strong id="emailRedefinirLbl"></strong>.</div>
+    <div class="form-group">
+      <label>Código (6 dígitos)</label>
+      <input type="text" id="codigo" placeholder="000000" inputmode="numeric" maxlength="6" style="letter-spacing:.3em;text-align:center;font-size:1.3rem;font-weight:800;">
+    </div>
+    <div class="form-group">
+      <label>Nova senha</label>
+      <input type="password" id="novaSenha" placeholder="mín. 6 caracteres" autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="redefinir()">Salvar nova senha</button>
+    <button class="btn btn-secondary btn-block" style="margin-top:.5rem;" onclick="abrir('cardLogin')">← Voltar ao login</button>
+  </div>
+
+</div>
+
+<script>
+function abrir(card) {
+  ['cardLogin','cardReset','cardRedefinir'].forEach(c => document.getElementById(c).style.display = c === card ? '' : 'none');
+}
+
+async function entrar() {
+  const email = document.getElementById('email').value.trim();
+  const senha = document.getElementById('senha').value;
+  if (!email || !senha) { toast('Informe e-mail e senha.', 'erro'); return; }
+  const btn = document.getElementById('btnEntrar');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  const res = await api({ action: 'login', email, senha });
+  btn.disabled = false; btn.textContent = 'Entrar →';
+  if (!res.ok) { toast(res.msg || 'Falha no login.', 'erro'); return; }
+  salvarSessao(res.token, res.perfil);
+  toast('Bem-vindo, ' + res.perfil.nome + '!', 'ok');
+  setTimeout(() => window.location.href = (res.perfil.status === 'PENDENTE' ? 'cadastro.html?pagar=1' : 'index.html'), 600);
+}
+
+let emailEmReset = '';
+async function pedirCodigo() {
+  const email = document.getElementById('emailReset').value.trim();
+  if (!email || email.indexOf('@') < 0) { toast('Informe um e-mail válido.', 'erro'); return; }
+  const res = await api({ action: 'recuperarSenha', email });
+  if (res.ok) {
+    emailEmReset = email;
+    document.getElementById('emailRedefinirLbl').textContent = email;
+    toast('Se o e-mail existir, o código foi enviado.', 'ok');
+    abrir('cardRedefinir');
+  } else toast(res.msg || 'Erro.', 'erro');
+}
+
+async function redefinir() {
+  const codigo = document.getElementById('codigo').value.trim();
+  const novaSenha = document.getElementById('novaSenha').value;
+  if (!codigo || !novaSenha) { toast('Preencha código e nova senha.', 'erro'); return; }
+  if (novaSenha.length < 6) { toast('A senha precisa de no mínimo 6 caracteres.', 'erro'); return; }
+  const res = await api({ action: 'redefinirSenha', email: emailEmReset, codigo, novaSenha });
+  if (res.ok) { toast('Senha redefinida! Faça login.', 'ok'); abrir('cardLogin'); document.getElementById('email').value = emailEmReset; }
+  else toast(res.msg || 'Erro.', 'erro');
+}
+
+// Se já houver sessão válida, vai direto para o início
+window.onload = async () => {
+  const token = getToken();
+  if (token) {
+    const res = await api({ action: 'verificarSessao', token });
+    if (res.ok) { salvarSessao(token, res.perfil); window.location.href = 'index.html'; }
+  }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Ranking — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">🏆</span>
+  <div class="header-texto">
+    <h1>Ranking</h1>
+    <p>Soma das 3 camadas</p>
+  </div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="minha-pontuacao.html">Pontuação</a>
+    <a href="regulamento.html">Regras</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="auto-refresh"><span class="dot"></span> Atualização automática a cada 1 minuto</div>
+
+  <div class="stats-bar" id="stats"></div>
+
+  <!-- Premiação -->
+  <div class="card">
+    <p class="card-titulo">💰 Premiação</p>
+    <div class="premiacao-grid">
+      <div class="premiacao-item destaque"><span class="emoji">🥇</span><span class="label">Campeão 60%</span><div class="valor" id="pCampeao">R$ —</div></div>
+      <div class="premiacao-item"><span class="emoji">🥈</span><span class="label">Vice 30%</span><div class="valor" id="pVice">R$ —</div></div>
+      <div class="premiacao-item"><span class="emoji">🛠️</span><span class="label">Organização 10%</span><div class="valor" id="pOrg">R$ —</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <p class="card-titulo" style="margin:0;">Classificação geral</p>
+      <span style="font-size:.68rem;color:var(--cinza-sub);">C1 · C2 · C3</span>
+    </div>
+    <div id="lista"><div class="vazio">Carregando…</div></div>
+  </div>
+
+</div>
+
+<script>
+let perfil = null, refreshInterval = null;
+function brl(v) { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+  await carregar(false);
+  refreshInterval = setInterval(() => { if (!document.hidden) carregar(true); }, 60000);
+}
+
+async function carregar(silent) {
+  const res = silent ? await apiSilent({ action: 'getRanking' }) : await api({ action: 'getRanking' });
+  if (!res.ok) return;
+
+  document.getElementById('pCampeao').textContent = brl(res.premiacao.campeao);
+  document.getElementById('pVice').textContent = brl(res.premiacao.vice);
+  document.getElementById('pOrg').textContent = brl(res.premiacao.organizacao);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-item"><div class="stat-valor">${res.totalParticipantes}</div><div class="stat-label">Aprovados</div></div>
+    <div class="stat-item destaque"><div class="stat-valor" style="font-size:1.15rem;">${brl(res.totalArrecadado)}</div><div class="stat-label">Arrecadado</div></div>
+    <div class="stat-item"><div class="stat-valor">${res.jogosMataMataApurados}</div><div class="stat-label">Jogos MM apurados</div></div>
+    <div class="stat-item"><div class="stat-valor">${res.totalJogosMataMata}</div><div class="stat-label">Jogos MM</div></div>`;
+
+  const lista = document.getElementById('lista');
+  if (!res.ranking.length) { lista.innerHTML = '<div class="vazio">Nenhum participante aprovado ainda.</div>'; return; }
+  const medalhas = ['🥇','🥈','🥉'];
+  lista.innerHTML = res.ranking.map(r => {
+    const posCls = r.posicao <= 3 ? 'pos-' + r.posicao : '';
+    const eu = r.id === perfil.id ? ' eu' : '';
+    const posTxt = r.posicao <= 3 ? medalhas[r.posicao - 1] : r.posicao + 'º';
+    return `<div class="ranking-item ${posCls}${eu}">
+      <div class="ranking-pos">${posTxt}</div>
+      <div>
+        <div class="ranking-nome">${r.nome}${r.id === perfil.id ? ' <span style="font-size:.7rem;color:var(--azul);">(você)</span>' : ''}</div>
+        <div class="ranking-sub">C1 ${r.c1.toFixed(0)} · C2 ${r.c2.toFixed(0)} · C3 ${r.c3.toFixed(1)}${r.acertouCampeao ? ' · 🏆' : ''}</div>
+      </div>
+      <div class="ranking-pts">${r.pontos.toFixed(1)}</div>
+    </div>`;
+  }).join('');
+  aplicarTwemoji(lista);
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html" class="ativo"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

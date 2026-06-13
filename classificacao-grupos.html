@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Classificação dos grupos — Camada 1</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">📊</span>
+  <div class="header-texto">
+    <h1>Camada 1 · Grupos</h1>
+    <p>Como cada grupo termina</p>
+  </div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="regulamento.html">Regras</a>
+  </nav>
+</header>
+
+<button class="fab-salvar" id="fab" onclick="salvar()">💾 Salvar palpite</button>
+
+<div class="container">
+
+  <div class="banner-info" id="bannerInfo">
+    Ordene o <strong>1º, 2º e 3º</strong> de cada grupo. Depois escolha os <strong>8 melhores terceiros</strong>.
+    <span id="travaTxt"></span>
+  </div>
+
+  <div id="bannerTravado" class="banner-aviso" style="display:none;">
+    🔒 Os palpites da fase de grupos estão <strong>encerrados</strong>. Veja abaixo o que você registrou.
+  </div>
+
+  <div id="conteudo"><div class="vazio">Carregando…</div></div>
+
+  <!-- 8 terceiros -->
+  <div class="card" id="cardTerceiros" style="display:none;">
+    <p class="card-titulo">🥉 8 melhores terceiros</p>
+    <p class="form-hint" style="margin-bottom:.8rem;">
+      Entre os times que você marcou como <strong>3º</strong>, escolha os <strong>8</strong> que você acha que avançam.
+      Selecionados: <strong id="contTerceiros">0</strong>/8 · vale 2 pts cada acerto.
+    </p>
+    <div class="terceiros-grid" id="terceirosGrid"></div>
+  </div>
+
+  <div style="height:1.5rem;"></div>
+</div>
+
+<script>
+let perfil = null;
+let encerrado = false;
+let GRUPOS = {};                  // { A: [t1,t2,t3,t4] }
+const estado = {};                // { A: {pos1,pos2,pos3} }
+let terceiros = [];               // siglas selecionadas
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+
+  const [rj, rp] = await Promise.all([
+    api({ action: 'getJogos' }),
+    api({ action: 'getPalpiteGrupos', token: getToken() })
+  ]);
+  if (!rj.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
+
+  // grupos a partir dos jogos
+  rj.jogos.forEach(j => {
+    if (!GRUPOS[j.grupo]) GRUPOS[j.grupo] = [];
+    [j.time1, j.time2].forEach(t => { if (GRUPOS[j.grupo].indexOf(t) < 0) GRUPOS[j.grupo].push(t); });
+  });
+
+  encerrado = rp.ok ? rp.encerrado : (Date.now() >= rj.travaCamada1);
+  const trava = rp.trava || rj.travaCamada1;
+  document.getElementById('travaTxt').textContent = encerrado ? '' :
+    ' Trava em ' + new Date(trava).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '.';
+
+  // estado salvo
+  if (rp.ok && rp.dados) {
+    if (rp.dados.grupos) Object.keys(rp.dados.grupos).forEach(g => estado[g] = rp.dados.grupos[g]);
+    if (rp.dados.terceiros) terceiros = rp.dados.terceiros.slice();
+  }
+
+  if (encerrado) {
+    document.getElementById('bannerTravado').style.display = '';
+    document.getElementById('bannerInfo').style.display = 'none';
+  }
+
+  render();
+}
+
+function render() {
+  const cont = document.getElementById('conteudo');
+  cont.innerHTML = '';
+  Object.keys(GRUPOS).sort().forEach(g => {
+    const e = estado[g] || {};
+    const box = document.createElement('div');
+    box.className = 'grupo-box' + ((e.pos1 && e.pos2 && e.pos3) ? ' ok' : '');
+    box.id = 'gb_' + g;
+    box.innerHTML = `
+      <h3>Grupo ${g} <span style="font-size:.7rem;color:var(--cinza-sub);font-weight:600;">${GRUPOS[g].length} seleções</span></h3>
+      ${linhaSelect(g, 'pos1', '1º')}
+      ${linhaSelect(g, 'pos2', '2º')}
+      ${linhaSelect(g, 'pos3', '3º')}`;
+    cont.appendChild(box);
+  });
+  renderTerceiros();
+  aplicarTwemoji(cont);
+}
+
+function linhaSelect(g, pos, rotulo) {
+  const e = estado[g] || {};
+  const sel = e[pos] || '';
+  const opcoes = ['<option value="">— escolher —</option>']
+    .concat(GRUPOS[g].map(t => `<option value="${t}" ${sel === t ? 'selected' : ''}>${nomeTime(t)}</option>`))
+    .join('');
+  const cls = pos === 'pos1' ? 'p1' : pos === 'pos2' ? 'p2' : 'p3';
+  return `<div class="pos-linha ${cls}">
+    <div class="pos-rotulo">${rotulo}</div>
+    <select id="s_${g}_${pos}" ${encerrado ? 'disabled' : ''} onchange="mudar('${g}','${pos}',this.value)">${opcoes}</select>
+  </div>`;
+}
+
+function mudar(g, pos, val) {
+  if (!estado[g]) estado[g] = {};
+  estado[g][pos] = val;
+  // checar duplicados no grupo
+  const e = estado[g];
+  const vals = [e.pos1, e.pos2, e.pos3].filter(Boolean);
+  const dup = vals.length !== new Set(vals).size;
+  ['pos1','pos2','pos3'].forEach(p => {
+    const s = document.getElementById('s_' + g + '_' + p);
+    if (!s) return;
+    const v = e[p];
+    const repetido = v && vals.filter(x => x === v).length > 1;
+    s.classList.toggle('dup', !!repetido);
+  });
+  if (dup) toast('Não repita a mesma seleção no grupo.', 'aviso');
+  // se mudou pos3, terceiros pode ter ficado inválido
+  if (pos === 'pos3') terceiros = terceiros.filter(t => poolTerceiros().indexOf(t) >= 0);
+  document.getElementById('gb_' + g).classList.toggle('ok', !!(e.pos1 && e.pos2 && e.pos3) && !dup);
+  renderTerceiros();
+  marcarSujo();
+}
+
+function poolTerceiros() {
+  // os pos3 escolhidos (um por grupo)
+  return Object.keys(GRUPOS).sort().map(g => (estado[g] || {}).pos3).filter(Boolean);
+}
+
+function renderTerceiros() {
+  const pool = poolTerceiros();
+  const card = document.getElementById('cardTerceiros');
+  if (!pool.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const grid = document.getElementById('terceirosGrid');
+  grid.innerHTML = pool.map(t => {
+    const sel = terceiros.indexOf(t) >= 0;
+    const bloq = !sel && terceiros.length >= 8;
+    return `<div class="terceiro-chip ${sel ? 'sel' : ''} ${(bloq || encerrado) ? 'disabled' : ''}" onclick="toggleTerceiro('${t}')">
+      <span class="bd">${bandeira(t)}</span><span>${nomeTime(t)}</span>${sel ? ' ✓' : ''}</div>`;
+  }).join('');
+  document.getElementById('contTerceiros').textContent = terceiros.length;
+  aplicarTwemoji(grid);
+}
+
+function toggleTerceiro(t) {
+  if (encerrado) return;
+  const i = terceiros.indexOf(t);
+  if (i >= 0) terceiros.splice(i, 1);
+  else { if (terceiros.length >= 8) { toast('Você já escolheu 8 terceiros.', 'aviso'); return; } terceiros.push(t); }
+  renderTerceiros();
+  marcarSujo();
+}
+
+let sujo = false;
+function marcarSujo() { sujo = true; if (!encerrado) document.getElementById('fab').classList.add('visivel'); }
+
+async function salvar() {
+  if (encerrado) { toast('Palpites encerrados.', 'aviso'); return; }
+  // validar duplicados
+  for (const g of Object.keys(estado)) {
+    const e = estado[g];
+    const vals = [e.pos1, e.pos2, e.pos3].filter(Boolean);
+    if (vals.length !== new Set(vals).size) { toast('Grupo ' + g + ': há seleções repetidas.', 'erro'); return; }
+  }
+  if (terceiros.length > 8) { toast('Escolha no máximo 8 terceiros.', 'erro'); return; }
+
+  const grupos = {};
+  Object.keys(estado).forEach(g => {
+    const e = estado[g];
+    if (e.pos1 || e.pos2 || e.pos3) grupos[g] = { pos1: e.pos1 || '', pos2: e.pos2 || '', pos3: e.pos3 || '' };
+  });
+
+  const fab = document.getElementById('fab');
+  fab.disabled = true; fab.textContent = 'Salvando…';
+  const res = await api({ action: 'salvarPalpiteGrupos', token: getToken(), dados: { grupos, terceiros } });
+  fab.disabled = false; fab.innerHTML = '💾 Salvar palpite';
+  if (res.ok) {
+    sujo = false; fab.classList.remove('visivel');
+    const completos = Object.keys(grupos).filter(g => grupos[g].pos1 && grupos[g].pos2 && grupos[g].pos3).length;
+    toast('Salvo! ' + completos + '/12 grupos · ' + terceiros.length + '/8 terceiros.', 'ok');
+  } else toast(res.msg || 'Erro ao salvar.', 'erro');
+}
+
+window.addEventListener('beforeunload', e => { if (sujo) { e.preventDefault(); e.returnValue = ''; } });
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

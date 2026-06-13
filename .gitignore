@@ -1,0 +1,7 @@
+# Sistema operacional / editores
+Thumbs.db
+desktop.ini
+.DS_Store
+*.tmp
+*.log
+.vscode/

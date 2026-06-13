@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Regulamento — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .reg-tbl { width:100%; border-collapse:collapse; font-size:.84rem; margin:.5rem 0; }
+    .reg-tbl th { background:var(--azul); color:#fff; padding:.5rem .6rem; text-align:left; font-size:.74rem; }
+    .reg-tbl td { padding:.5rem .6rem; border-bottom:1px solid var(--cinza-borda); }
+    .reg-tbl td.pt { font-weight:900; color:var(--azul); text-align:right; white-space:nowrap; }
+    .reg-tbl tr:last-child td { border-bottom:none; }
+    .reg-li { font-size:.86rem; line-height:1.6; margin-bottom:.4rem; padding-left:1.2rem; position:relative; }
+    .reg-li::before { content:'•'; position:absolute; left:.2rem; color:var(--ouro); font-weight:900; }
+    .reg-num { counter-reset:item; }
+    .reg-num .reg-li { counter-increment:item; }
+    .reg-num .reg-li::before { content:counter(item); background:var(--azul); color:#fff; width:1.1rem; height:1.1rem; border-radius:50%; font-size:.7rem; display:inline-flex; align-items:center; justify-content:center; left:0; top:.15rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📋</span>
+  <div class="header-texto"><h1>Regulamento</h1><p>v2 · Fase Eliminatória</p></div>
+  <nav><a href="index.html">Início</a><a href="ranking.html">Ranking</a></nav>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <h2>3 camadas de pontos</h2>
+    <p>Errar uma não impede pontuar nas outras. O ranking final é a soma das três.</p>
+  </div>
+
+  <div class="banner-aviso">
+    💡 Esta é a <strong>v2 (fase eliminatória)</strong> — totalmente separada da fase de grupos da v1. Os placares dos 72 jogos de grupo da v1 <strong>não</strong> contam aqui.
+  </div>
+
+  <!-- Camada 1 -->
+  <div class="card">
+    <p class="card-titulo"><span class="camada-pill camada-1">Camada 1</span> Classificação dos grupos</p>
+    <p style="font-size:.86rem;color:var(--cinza-sub);margin-bottom:.6rem;">Preveja o 1º, 2º e 3º de cada grupo e quais são os <strong>8 melhores terceiros</strong> que avançam. Trava antes da 3ª rodada (≈23/jun).</p>
+    <table class="reg-tbl">
+      <tr><th>Critério</th><th style="text-align:right;">Pontos</th></tr>
+      <tr><td>Acertar o <strong>1º</strong> do grupo na posição exata</td><td class="pt">5</td></tr>
+      <tr><td>Acertar o <strong>2º</strong> do grupo na posição exata</td><td class="pt">5</td></tr>
+      <tr><td>Time avança (entre os 2 primeiros) mas errou a posição</td><td class="pt">3</td></tr>
+      <tr><td>Acertar uma seleção entre os <strong>8 melhores terceiros</strong></td><td class="pt">2</td></tr>
+    </table>
+  </div>
+
+  <!-- Camada 2 -->
+  <div class="card">
+    <p class="card-titulo"><span class="camada-pill camada-2">Camada 2</span> Quem avança (mata-mata)</p>
+    <p style="font-size:.86rem;color:var(--cinza-sub);margin-bottom:.6rem;">Acerte qual seleção avança em cada confronto — independe do placar. <strong>Trava por fase</strong>: cada fase fecha antes do seu 1º jogo.</p>
+    <table class="reg-tbl">
+      <tr><th>Fase</th><th style="text-align:right;">Pontos/acerto</th></tr>
+      <tr><td>Rodada de 32 (32-avos)</td><td class="pt">2</td></tr>
+      <tr><td>Oitavas de final</td><td class="pt">4</td></tr>
+      <tr><td>Quartas de final</td><td class="pt">6</td></tr>
+      <tr><td>Semifinais</td><td class="pt">10</td></tr>
+      <tr><td><strong>Campeão (Final)</strong></td><td class="pt">15</td></tr>
+    </table>
+  </div>
+
+  <!-- Camada 3 -->
+  <div class="card">
+    <p class="card-titulo"><span class="camada-pill camada-3">Camada 3</span> Placares do mata-mata</p>
+    <p style="font-size:.86rem;color:var(--cinza-sub);margin-bottom:.6rem;">Crave o placar de cada jogo eliminatório, mesmo que tenha errado quem ia jogar. Corte por jogo (trava 5 min antes do apito).</p>
+    <table class="reg-tbl">
+      <tr><th>Critério</th><th style="text-align:right;">Pontos</th></tr>
+      <tr><td>Placar exato</td><td class="pt">15</td></tr>
+      <tr><td>Acertar o placar só do vencedor</td><td class="pt">10</td></tr>
+      <tr><td>Empate: acertar o placar de um dos times</td><td class="pt">7,5</td></tr>
+      <tr><td>Acertar o placar só do perdedor</td><td class="pt">5</td></tr>
+    </table>
+  </div>
+
+  <!-- Desempate -->
+  <div class="card">
+    <p class="card-titulo">⚖️ Critérios de desempate</p>
+    <p style="font-size:.84rem;color:var(--cinza-sub);margin-bottom:.6rem;">Aplicados em ordem, um por vez, até resolver:</p>
+    <div class="reg-num">
+      <div class="reg-li">Maior número de <strong>placares exatos</strong> (15 pts na Camada 3).</div>
+      <div class="reg-li">Acertou o <strong>campeão</strong> da Copa.</div>
+      <div class="reg-li">Maior pontuação nas <strong>fases finais</strong> (semis + final da Camada 2).</div>
+      <div class="reg-li">Mais <strong>posições exatas</strong> na fase de grupos (1º e 2º cravados na Camada 1).</div>
+      <div class="reg-li">Palpite de <strong>total de gols da final</strong> mais próximo. Persistindo, sorteio.</div>
+    </div>
+  </div>
+
+  <!-- Cronograma -->
+  <div class="card">
+    <p class="card-titulo">🗓️ Cronograma 2026 <span style="font-size:.7rem;font-weight:600;color:var(--cinza-sub);">(horário de Brasília)</span></p>
+    <table class="reg-tbl">
+      <tr><th>Fase</th><th>Datas</th><th style="text-align:right;">Jogos</th></tr>
+      <tr><td>Fase de Grupos</td><td>11–27 jun</td><td class="pt">72</td></tr>
+      <tr><td>Rodada de 32</td><td>28 jun – 3 jul</td><td class="pt">16</td></tr>
+      <tr><td>Oitavas de Final</td><td>4–7 jul</td><td class="pt">8</td></tr>
+      <tr><td>Quartas de Final</td><td>9–11 jul</td><td class="pt">4</td></tr>
+      <tr><td>Semifinais</td><td>14–15 jul</td><td class="pt">2</td></tr>
+      <tr><td>Disputa de 3º Lugar</td><td>18 jul</td><td class="pt">1</td></tr>
+      <tr><td>Final</td><td>19 jul</td><td class="pt">1</td></tr>
+    </table>
+    <p style="font-size:.76rem;color:var(--cinza-sub);margin-top:.4rem;">As datas podem sofrer pequenos ajustes — confirmar perto das partidas.</p>
+  </div>
+
+  <!-- Inscrição -->
+  <div class="card">
+    <p class="card-titulo">💳 Inscrição e premiação</p>
+    <p class="reg-li">Inscrição da v2: <strong>R$ <span id="valorInscr">100,00</span></strong> via Pix.</p>
+    <p class="reg-li">A pontuação só conta no ranking <strong>após a confirmação do pagamento</strong> pelo administrador.</p>
+    <p class="reg-li">Premiação: 🥇 Campeão <strong>60%</strong> · 🥈 Vice <strong>30%</strong> · 🛠️ Organização <strong>10%</strong>.</p>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('valorInscr').textContent = CONFIG.VALOR_INSCRICAO.toFixed(2).replace('.', ',');
+  aplicarTwemoji(document.body);
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html" class="ativo"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

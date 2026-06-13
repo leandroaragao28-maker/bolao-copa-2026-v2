@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Criar conta — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚽</span>
+  <div class="header-texto">
+    <h1>Criar conta</h1>
+    <p>v2 · Fase Eliminatória</p>
+  </div>
+  <nav>
+    <a href="login.html">Entrar</a>
+  </nav>
+</header>
+
+<div class="container" style="max-width:460px;">
+
+  <div class="steps">
+    <div class="step ativo" id="st1">1 · Cadastro</div>
+    <div class="step" id="st2">2 · Pagamento</div>
+  </div>
+
+  <!-- STEP 1 — Cadastro -->
+  <div id="step1" class="card">
+    <p class="card-titulo">Seus dados</p>
+    <div class="form-group">
+      <label>Nome completo</label>
+      <input type="text" id="nome" placeholder="Seu nome" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="email" placeholder="seu@email.com" inputmode="email" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp</label>
+      <input type="tel" id="whatsapp" placeholder="(88) 99999-9999" inputmode="tel" autocomplete="tel">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="senha" placeholder="mín. 6 caracteres" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Confirmar senha</label>
+      <input type="password" id="senha2" placeholder="repita a senha" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Palpite: total de gols da FINAL <span style="text-transform:none;font-weight:600;color:var(--cinza-sub);">(opcional)</span></label>
+      <input type="number" id="golsFinal" min="0" max="20" placeholder="ex: 3" inputmode="numeric">
+      <p class="form-hint">Usado como critério de desempate. Você pode definir/alterar depois, até o início do mata-mata.</p>
+    </div>
+    <button class="btn btn-primary btn-block" id="btnCadastrar" onclick="cadastrar()">Continuar para pagamento →</button>
+    <div style="text-align:center;margin-top:.9rem;font-size:.85rem;color:var(--cinza-sub);">
+      Já tem conta? <a href="login.html" style="color:var(--azul);font-weight:700;">Entrar</a>
+    </div>
+  </div>
+
+  <!-- STEP 2 — Pagamento -->
+  <div id="step2" class="card" style="display:none;">
+    <p class="card-titulo">💳 Pagamento via Pix</p>
+    <div style="margin-bottom:.5rem;font-size:.9rem;">Olá <strong id="nomeConfirm"></strong>! Sua conta foi criada.</div>
+    <div class="banner-info" style="margin-bottom:1rem;">
+      A inscrição da fase eliminatória (v2) custa <strong>R$ <span id="valorTxt">100,00</span></strong>.
+      Pague via Pix para que sua pontuação valha no ranking.
+    </div>
+
+    <div class="qr-box">
+      <div id="qrContainer" class="pix-qr-loader">⏳ Gerando QR Code…</div>
+      <p style="font-size:.75rem;color:var(--cinza-sub);margin-top:.8rem;margin-bottom:.3rem;">Ou copie o código Pix:</p>
+      <div class="pix-codigo" id="pixCodigo" onclick="copiarPix()" title="Toque para copiar">Gerando…</div>
+      <button class="btn btn-secondary btn-block" onclick="copiarPix()" style="margin-top:.6rem;">📋 Copiar código Pix</button>
+    </div>
+
+    <div class="banner-aviso">
+      ⏳ Após o pagamento, o administrador confirma e libera sua pontuação. Você receberá aviso pelo WhatsApp.
+      Enquanto isso, você já pode preencher seus palpites.
+    </div>
+
+    <a class="btn btn-primary btn-block" href="index.html">Ir para o início → começar a palpitar</a>
+  </div>
+
+</div>
+
+<script>
+let meuId = '', meuNome = '';
+
+function setStep(n) {
+  document.getElementById('st1').className = 'step' + (n > 1 ? ' feito' : ' ativo');
+  document.getElementById('st2').className = 'step' + (n === 2 ? ' ativo' : '');
+  document.getElementById('step1').style.display = n === 1 ? '' : 'none';
+  document.getElementById('step2').style.display = n === 2 ? '' : 'none';
+}
+
+async function cadastrar() {
+  const nome = document.getElementById('nome').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const whatsapp = document.getElementById('whatsapp').value.trim();
+  const senha = document.getElementById('senha').value;
+  const senha2 = document.getElementById('senha2').value;
+  const golsFinal = document.getElementById('golsFinal').value;
+  if (!nome || !email || !whatsapp || !senha) { toast('Preencha todos os campos obrigatórios.', 'erro'); return; }
+  if (email.indexOf('@') < 0) { toast('E-mail inválido.', 'erro'); return; }
+  if (senha.length < 6) { toast('A senha precisa de no mínimo 6 caracteres.', 'erro'); return; }
+  if (senha !== senha2) { toast('As senhas não conferem.', 'erro'); return; }
+
+  const btn = document.getElementById('btnCadastrar');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  const res = await api({ action: 'cadastrar', nome, email, whatsapp, senha, golsFinal });
+  btn.disabled = false; btn.textContent = 'Continuar para pagamento →';
+  if (!res.ok) { toast(res.msg || 'Erro no cadastro.', 'erro'); return; }
+  salvarSessao(res.token, res.perfil);
+  meuId = res.perfil.id; meuNome = res.perfil.nome;
+  toast('Conta criada!', 'ok');
+  mostrarPagamento();
+}
+
+function mostrarPagamento() {
+  setStep(2);
+  document.getElementById('nomeConfirm').textContent = meuNome;
+  document.getElementById('valorTxt').textContent = CONFIG.VALOR_INSCRICAO.toFixed(2).replace('.', ',');
+  gerarQR(meuId);
+}
+
+function gerarQR(txid) {
+  const payload = gerarPixCopiaECola(CONFIG.PIX_CHAVE, CONFIG.PIX_NOME, CONFIG.PIX_CIDADE, CONFIG.VALOR_INSCRICAO, txid);
+  document.getElementById('pixCodigo').textContent = payload;
+  const chaveLimpa = CONFIG.PIX_CHAVE.replace(/[.\-\/]/g, '');
+  const nomeLimpo = CONFIG.PIX_NOME.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 25);
+  const cidadeLimpa = CONFIG.PIX_CIDADE.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 15);
+  const url = 'https://gerarqrcodepix.com.br/api/v1?nome=' + encodeURIComponent(nomeLimpo) +
+    '&cidade=' + encodeURIComponent(cidadeLimpa) + '&valor=' + CONFIG.VALOR_INSCRICAO.toFixed(2) +
+    '&saida=qr&chave=' + encodeURIComponent(chaveLimpa) + '&txid=' + encodeURIComponent(String(txid).replace(/[^a-zA-Z0-9]/g, '').slice(0, 25));
+  const container = document.getElementById('qrContainer');
+  const img = document.createElement('img');
+  img.className = 'pix-qr-img'; img.alt = 'QR Code Pix';
+  img.onload = () => { container.innerHTML = ''; container.appendChild(img); };
+  img.onerror = () => { container.innerHTML = '<div style="background:var(--cinza-fundo);border-radius:8px;padding:1rem;font-size:.78rem;color:var(--cinza-sub);">QR indisponível — use o código copia-e-cola abaixo.</div>'; };
+  img.src = url;
+}
+
+function copiarPix() {
+  navigator.clipboard.writeText(document.getElementById('pixCodigo').textContent)
+    .then(() => toast('Código Pix copiado!', 'ok'))
+    .catch(() => toast('Selecione e copie manualmente.', 'aviso'));
+}
+
+// ?pagar=1 → usuário logado pendente vai direto ao pagamento
+window.onload = async () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('pagar')) {
+    const perfil = await exigirLogin();
+    if (perfil) {
+      if (perfil.status === 'APROVADO') { window.location.href = 'index.html'; return; }
+      meuId = perfil.id; meuNome = perfil.nome;
+      mostrarPagamento();
+    }
+  }
+};
+</script>
+</body>
+</html>

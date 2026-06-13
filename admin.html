@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Admin — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .mm-form { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .mm-form .full { grid-column:1 / -1; }
+    .mm-form label { font-size:.7rem; font-weight:700; color:var(--cinza-sub); text-transform:uppercase; }
+    .mm-form select, .mm-form input { width:100%; padding:.55rem; border:2px solid var(--cinza-borda); border-radius:8px; font-size:.9rem; }
+    .conf-card { border:2px solid var(--cinza-borda); border-radius:8px; padding:.6rem; margin-bottom:.5rem; }
+    .conf-card.tem-res { border-color:#A5D6A7; background:#F1F8E9; }
+    .conf-top { display:flex; align-items:center; gap:.4rem; font-weight:700; font-size:.84rem; margin-bottom:.4rem; }
+    .conf-res { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
+    .conf-res input { width:42px; height:38px; text-align:center; border:2px solid var(--cinza-borda); border-radius:6px; font-weight:800; font-size:1rem; }
+    .conf-res select { padding:.35rem; border:2px solid var(--cinza-borda); border-radius:6px; font-size:.78rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚙️</span>
+  <div class="header-texto"><h1>Administração</h1><p>v2 · Fase Eliminatória</p></div>
+  <nav><a href="index.html">Site</a><a href="ranking.html">Ranking</a></nav>
+</header>
+
+<div class="container">
+
+  <!-- Login -->
+  <div id="login" class="card" style="max-width:380px;margin:0 auto;">
+    <p class="card-titulo">🔐 Acesso restrito</p>
+    <div class="form-group">
+      <label>Senha do administrador</label>
+      <input type="password" id="senha" placeholder="••••••••" onkeydown="if(event.key==='Enter')entrar()">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="entrar()">Entrar</button>
+  </div>
+
+  <!-- Painel -->
+  <div id="painel" style="display:none;">
+    <div class="seg">
+      <button id="tab-part" class="ativo" onclick="aba('part')">👥 Participantes</button>
+      <button id="tab-grupos" onclick="aba('grupos')">🏟️ Grupos</button>
+      <button id="tab-mm" onclick="aba('mm')">🗺️ Mata-mata</button>
+      <button id="tab-resumo" onclick="aba('resumo')">📊 Resumo</button>
+      <button onclick="sair()" style="margin-left:auto;">Sair</button>
+    </div>
+
+    <!-- ABA PARTICIPANTES -->
+    <div id="aba-part">
+      <div class="stats-bar" id="statsPart"></div>
+      <div class="card" style="padding:.8rem;">
+        <div style="display:flex;gap:.4rem;margin-bottom:.8rem;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary btn-sm" id="f-todos" onclick="setFiltro('todos')">Todos</button>
+          <button class="btn btn-secondary btn-sm" id="f-pendente" onclick="setFiltro('pendente')">⏳ Pendentes</button>
+          <button class="btn btn-secondary btn-sm" id="f-aprovado" onclick="setFiltro('aprovado')">✅ Aprovados</button>
+          <button class="btn btn-secondary btn-sm" onclick="reportParticipantes()" style="margin-left:auto;">📋 Report</button>
+          <button class="btn btn-secondary btn-sm" onclick="carregarPart()">🔄</button>
+        </div>
+        <div id="listaPart"></div>
+      </div>
+    </div>
+
+    <!-- ABA GRUPOS -->
+    <div id="aba-grupos" style="display:none;">
+      <div class="card" style="padding:.8rem;">
+        <p class="card-titulo" style="font-size:.9rem;">Resultados reais — fase de grupos</p>
+        <div class="banner-info" style="margin-bottom:.8rem;">Lance os placares dos 72 jogos. Alimentam a Camada 1 (classificação real).</div>
+        <div id="listaGrupos"></div>
+      </div>
+    </div>
+
+    <!-- ABA MATA-MATA -->
+    <div id="aba-mm" style="display:none;">
+      <div class="card" style="padding:.9rem;">
+        <p class="card-titulo" style="font-size:.9rem;">➕ Criar confronto do mata-mata</p>
+        <div class="mm-form">
+          <div><label>Fase</label><select id="nf-fase"></select></div>
+          <div><label>Data</label><input type="date" id="nf-data"></div>
+          <div><label>Hora (ex: 16h, 20h30)</label><input type="text" id="nf-hora" placeholder="16h"></div>
+          <div></div>
+          <div><label>Seleção 1</label><select id="nf-t1"></select></div>
+          <div><label>Seleção 2</label><select id="nf-t2"></select></div>
+          <div class="full"><button class="btn btn-primary btn-block" onclick="criarConfronto()">Criar confronto</button></div>
+        </div>
+      </div>
+      <div class="card" style="padding:.8rem;">
+        <p class="card-titulo" style="font-size:.9rem;">Confrontos & resultados</p>
+        <div class="banner-info" style="margin-bottom:.8rem;">Lance placar + <strong>quem avançou</strong> (obrigatório em empate por pênaltis). Alimenta Camadas 2 e 3.</div>
+        <div id="listaMM"></div>
+      </div>
+    </div>
+
+    <!-- ABA RESUMO -->
+    <div id="aba-resumo" style="display:none;">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+          <p class="card-titulo" style="margin:0;">Resumo</p>
+          <button class="btn btn-secondary btn-sm" onclick="reportRanking()">📋 Report ranking</button>
+        </div>
+        <div id="resumo"><div class="vazio">Carregando…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal report -->
+<div id="modal" class="modal-bg">
+  <div class="modal-cx">
+    <div class="mh"><span style="font-size:1.2rem;">📋</span><span class="t">Report para WhatsApp</span><button onclick="fecharModal()">✕</button></div>
+    <div class="mb"><textarea id="reportTxt" readonly></textarea></div>
+    <div class="mf"><button class="btn btn-primary" style="flex:1;" onclick="copiarReport()">📋 Copiar</button><button class="btn btn-secondary" onclick="fecharModal()">Fechar</button></div>
+  </div>
+</div>
+
+<script>
+let senha = '';
+let _part = [], _cont = { grupos:{}, bracket:{}, mataMata:{} }, _filtro = 'todos';
+let _resGrupos = {}, _jogos = [], _jogosMM = [], _resMM = {};
+
+const TIMES_ORD = Object.keys(NOMES).sort((a,b) => nomeTime(a).localeCompare(nomeTime(b)));
+function opcoesTimes(sel) { return '<option value="">— time —</option>' + TIMES_ORD.map(t => `<option value="${t}" ${sel===t?'selected':''}>${nomeTime(t)} (${t})</option>`).join(''); }
+
+async function entrar() {
+  const s = document.getElementById('senha').value;
+  if (!s) return;
+  const res = await api({ action: 'adminLogin', senha: s });
+  if (!res.ok) { toast(res.msg || 'Senha incorreta.', 'erro'); return; }
+  senha = s;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('painel').style.display = '';
+  // preencher selects do form MM
+  document.getElementById('nf-fase').innerHTML = FASES_ORDEM.map(f => `<option value="${f}">${FASES_INFO[f].label}</option>`).join('');
+  document.getElementById('nf-t1').innerHTML = opcoesTimes('');
+  document.getElementById('nf-t2').innerHTML = opcoesTimes('');
+  carregarPart();
+  carregarGrupos();
+  carregarMM();
+}
+function sair() { senha = ''; location.reload(); }
+
+function aba(a) {
+  ['part','grupos','mm','resumo'].forEach(x => {
+    document.getElementById('aba-' + x).style.display = x === a ? '' : 'none';
+    document.getElementById('tab-' + x).className = x === a ? 'ativo' : '';
+  });
+  if (a === 'resumo') carregarResumo();
+  if (a === 'mm') carregarMM();
+}
+
+// ── Participantes ──
+async function carregarPart() {
+  const [r, rc] = await Promise.all([
+    api({ action: 'getParticipantes', senha }),
+    api({ action: 'getContagens', senha })
+  ]);
+  if (!r.ok) { toast(r.msg, 'erro'); return; }
+  _part = r.participantes;
+  _cont = rc.ok ? rc.contagens : { grupos:{}, bracket:{}, mataMata:{} };
+  const pend = _part.filter(p => p.status === 'PENDENTE').length;
+  const aprov = _part.filter(p => p.status === 'APROVADO').length;
+  document.getElementById('statsPart').innerHTML = `
+    <div class="stat-item"><div class="stat-valor">${_part.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat-item" style="border-color:#FFCC80;background:#FFF3E0;"><div class="stat-valor" style="color:#BF360C;">${pend}</div><div class="stat-label">Pendentes</div></div>
+    <div class="stat-item" style="border-color:var(--azul-palido);background:var(--azul-fundo);"><div class="stat-valor">${aprov}</div><div class="stat-label">Aprovados</div></div>
+    <div class="stat-item destaque"><div class="stat-valor" style="font-size:1.05rem;">R$${(aprov*CONFIG.VALOR_INSCRICAO).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-label">Arrecadado</div></div>`;
+  _part.sort((a,b) => a.status === b.status ? 0 : (a.status === 'PENDENTE' ? -1 : 1));
+  renderPart();
+}
+function setFiltro(f) {
+  _filtro = f;
+  ['todos','pendente','aprovado'].forEach(x => document.getElementById('f-'+x).className = 'btn btn-' + (x===f?'primary':'secondary') + ' btn-sm');
+  renderPart();
+}
+function renderPart() {
+  const lista = _part.filter(p => _filtro === 'todos' ? true : p.status.toLowerCase() === _filtro);
+  const div = document.getElementById('listaPart');
+  if (!lista.length) { div.innerHTML = '<p class="vazio">Nenhum participante.</p>'; return; }
+  div.innerHTML = lista.map(p => {
+    const isPend = p.status !== 'APROVADO';
+    const g = _cont.grupos[p.id] ? '✅' : '—';
+    const br = _cont.bracket[p.id] || 0;
+    const mm = _cont.mataMata[p.id] || 0;
+    return `<div style="border:2px solid ${isPend ? '#FFCC80' : 'var(--azul-palido)'};border-radius:var(--radius-sm);padding:.8rem;margin-bottom:.6rem;">
+      <div style="display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.5rem;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:.9rem;">${p.nome}</div>
+          <div style="font-size:.72rem;color:var(--cinza-sub);">${p.email} · ${p.whatsapp}</div>
+          <div style="font-size:.68rem;color:var(--cinza-sub);margin-top:.2rem;">C1 grupos ${g} · C2 bracket ${br} · C3 placares ${mm} · gols final: ${p.golsFinalPalpite !== '' && p.golsFinalPalpite != null ? p.golsFinalPalpite : '—'}</div>
+        </div>
+        <span class="badge badge-${p.status.toLowerCase()}">${p.status}</span>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        ${isPend
+          ? `<button class="btn btn-primary btn-sm btn-block" onclick="aprovar('${p.id}','APROVADO')">✅ Aprovar pagamento</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="aprovar('${p.id}','PENDENTE')">Revogar</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function aprovar(id, status) {
+  if (status === 'PENDENTE' && !confirm('Revogar aprovação?')) return;
+  const res = await api({ action: 'aprovarParticipante', senha, id, status });
+  if (res.ok) { toast(res.msg, status === 'APROVADO' ? 'ok' : 'aviso'); carregarPart(); }
+  else toast(res.msg, 'erro');
+}
+
+// ── Grupos (resultados reais) ──
+async function carregarGrupos() {
+  const [rj, rr] = await Promise.all([
+    api({ action: 'getJogos' }),
+    api({ action: 'getResultadosGruposAdmin', senha })
+  ]);
+  if (rj.ok) _jogos = rj.jogos;
+  if (rr.ok) _resGrupos = rr.resultados;
+  const grupos = {};
+  _jogos.forEach(j => { (grupos[j.grupo] = grupos[j.grupo] || []).push(j); });
+  const cont = document.getElementById('listaGrupos');
+  cont.innerHTML = '';
+  Object.keys(grupos).sort().forEach(g => {
+    cont.insertAdjacentHTML('beforeend', `<span class="grupo-titulo">Grupo ${g}</span>`);
+    grupos[g].forEach(j => {
+      const r = _resGrupos[j.id]; const salvo = r !== undefined;
+      const card = document.createElement('div');
+      card.className = 'jogo-card' + (salvo ? ' resultado-salvo' : '');
+      card.innerHTML = `
+        <div class="time"><span class="bandeira">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
+        <div style="text-align:center;">
+          <div class="jogo-meta">${fmtDiaMes(j.data)} ${j.hora}</div>
+          <div class="placar-inputs" style="flex-direction:row;margin:.3rem 0;">
+            <input type="number" min="0" max="30" id="rg1_${j.id}" value="${salvo ? r.gols1 : ''}" placeholder="?" inputmode="numeric">
+            <span class="placar-sep">×</span>
+            <input type="number" min="0" max="30" id="rg2_${j.id}" value="${salvo ? r.gols2 : ''}" placeholder="?" inputmode="numeric">
+          </div>
+          <button class="btn btn-${salvo ? 'secondary' : 'primary'} btn-sm" onclick="salvarResGrupo(${j.id})">${salvo ? '✏️' : '💾'}</button>
+        </div>
+        <div class="time time-direita"><span>${nomeTime(j.time2)}</span><span class="bandeira">${bandeira(j.time2)}</span></div>`;
+      cont.appendChild(card);
+    });
+  });
+  aplicarTwemoji(cont);
+}
+async function salvarResGrupo(id) {
+  const g1 = document.getElementById('rg1_'+id).value, g2 = document.getElementById('rg2_'+id).value;
+  if (g1 === '' || g2 === '') { toast('Preencha os dois placares.', 'aviso'); return; }
+  const res = await api({ action: 'salvarResultadoGrupo', senha, jogoId: id, gols1: parseInt(g1), gols2: parseInt(g2) });
+  if (res.ok) { toast('Salvo!', 'ok'); _resGrupos[id] = { gols1: parseInt(g1), gols2: parseInt(g2) }; carregarGrupos(); }
+  else toast(res.msg, 'erro');
+}
+
+// ── Mata-mata (confrontos + resultados) ──
+async function carregarMM() {
+  const rmm = await api({ action: 'getJogosMataMata' });
+  if (rmm.ok) { _jogosMM = rmm.jogos; _resMM = rmm.resultados || {}; }
+  const cont = document.getElementById('listaMM');
+  if (!_jogosMM.length) { cont.innerHTML = '<div class="vazio">Nenhum confronto criado ainda.</div>'; return; }
+  const porFase = {};
+  _jogosMM.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
+  let html = '';
+  FASES_ORDEM.forEach(fase => {
+    const lista = porFase[fase]; if (!lista) return;
+    html += `<div class="mm-fase" style="margin-top:.7rem;">${FASES_INFO[fase].label}</div>`;
+    lista.forEach(j => {
+      const r = _resMM[j.id]; const salvo = r !== undefined;
+      html += `<div class="conf-card ${salvo ? 'tem-res' : ''}">
+        <div class="conf-top"><span class="bd">${bandeira(j.time1)}</span>${nomeTime(j.time1)} <span style="color:var(--cinza-sub);">×</span> ${nomeTime(j.time2)} <span class="bd">${bandeira(j.time2)}</span>
+          <span style="margin-left:auto;font-size:.66rem;color:var(--cinza-sub);">${fmtDiaMes(j.data)} ${j.hora}</span></div>
+        <div class="conf-res">
+          <input type="number" min="0" max="30" id="rm1_${j.id}" value="${salvo ? r.gols1 : ''}" placeholder="?">
+          <span class="placar-sep">×</span>
+          <input type="number" min="0" max="30" id="rm2_${j.id}" value="${salvo ? r.gols2 : ''}" placeholder="?">
+          <select id="rmv_${j.id}" title="Quem avançou">
+            <option value="">avançou…</option>
+            <option value="${j.time1}" ${salvo && r.vencedor===j.time1?'selected':''}>${nomeTime(j.time1)}</option>
+            <option value="${j.time2}" ${salvo && r.vencedor===j.time2?'selected':''}>${nomeTime(j.time2)}</option>
+          </select>
+          <button class="btn btn-${salvo?'secondary':'primary'} btn-sm" onclick="salvarResMM('${j.id}','${j.time1}','${j.time2}')">${salvo?'✏️':'💾'}</button>
+          <button class="btn btn-danger btn-sm" onclick="excluirConfronto('${j.id}')">🗑</button>
+        </div>
+      </div>`;
+    });
+  });
+  cont.innerHTML = html;
+  aplicarTwemoji(cont);
+}
+async function criarConfronto() {
+  const fase = document.getElementById('nf-fase').value;
+  const data = document.getElementById('nf-data').value;
+  const hora = document.getElementById('nf-hora').value.trim();
+  const t1 = document.getElementById('nf-t1').value, t2 = document.getElementById('nf-t2').value;
+  if (!fase || !data || !hora || !t1 || !t2) { toast('Preencha todos os campos.', 'erro'); return; }
+  if (t1 === t2) { toast('As duas seleções são iguais.', 'erro'); return; }
+  // data vem como AAAA-MM-DD (input date) — já no formato esperado
+  const res = await api({ action: 'criarJogoMataMata', senha, fase, data, hora, time1: t1, time2: t2 });
+  if (res.ok) { toast('Confronto criado!', 'ok'); document.getElementById('nf-hora').value=''; document.getElementById('nf-t1').value=''; document.getElementById('nf-t2').value=''; carregarMM(); }
+  else toast(res.msg, 'erro');
+}
+async function salvarResMM(id, t1, t2) {
+  const g1 = document.getElementById('rm1_'+id).value, g2 = document.getElementById('rm2_'+id).value;
+  let venc = document.getElementById('rmv_'+id).value;
+  if (g1 === '' || g2 === '') { toast('Preencha os dois placares.', 'aviso'); return; }
+  if (parseInt(g1) === parseInt(g2) && !venc) { toast('Empate: escolha quem avançou.', 'erro'); return; }
+  const res = await api({ action: 'salvarResultadoMataMata', senha, jogoId: id, gols1: parseInt(g1), gols2: parseInt(g2), vencedor: venc, time1: t1, time2: t2 });
+  if (res.ok) { toast('Resultado salvo!', 'ok'); carregarMM(); }
+  else toast(res.msg, 'erro');
+}
+async function excluirConfronto(id) {
+  if (!confirm('Excluir este confronto? (palpites associados deixam de pontuar)')) return;
+  const res = await api({ action: 'excluirJogoMataMata', senha, id });
+  if (res.ok) { toast('Excluído.', 'aviso'); carregarMM(); } else toast(res.msg, 'erro');
+}
+
+// ── Resumo ──
+async function carregarResumo() {
+  const res = await api({ action: 'getRanking' });
+  if (!res.ok) return;
+  const brl = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const top3 = res.ranking.slice(0, 3); const m = ['🥇','🥈','🥉'];
+  document.getElementById('resumo').innerHTML = `
+    <div class="stats-bar" style="grid-template-columns:repeat(2,1fr);margin-bottom:1rem;">
+      <div class="stat-item"><div class="stat-valor">${res.totalParticipantes}</div><div class="stat-label">Aprovados</div></div>
+      <div class="stat-item destaque"><div class="stat-valor" style="font-size:1.05rem;">${brl(res.totalArrecadado)}</div><div class="stat-label">Arrecadado</div></div>
+      <div class="stat-item"><div class="stat-valor">${res.jogosMataMataApurados}</div><div class="stat-label">Jogos MM apurados</div></div>
+      <div class="stat-item"><div class="stat-valor">${res.totalJogosMataMata}</div><div class="stat-label">Confrontos MM</div></div>
+    </div>
+    <p style="font-weight:800;font-size:.88rem;margin-bottom:.6rem;color:var(--azul);">Top 3:</p>
+    ${top3.length ? top3.map((r,i) => `<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .9rem;background:var(--cinza-fundo);border-radius:var(--radius-sm);margin-bottom:.4rem;"><span style="font-size:1.3rem;">${m[i]}</span><span style="flex:1;font-weight:700;">${r.nome}</span><span style="font-weight:900;color:var(--azul);">${r.pontos.toFixed(1)}</span></div>`).join('') : '<p class="vazio">Sem dados.</p>'}
+    <div class="banner-aviso" style="margin-top:1rem;">🥇 ${brl(res.premiacao.campeao)} | 🥈 ${brl(res.premiacao.vice)} | 🛠 ${brl(res.premiacao.organizacao)}</div>`;
+}
+
+// ── Reports WhatsApp ──
+function reportParticipantes() {
+  const aprov = _part.filter(p => p.status === 'APROVADO');
+  if (!aprov.length) { toast('Nenhum aprovado.', 'aviso'); return; }
+  const maxNome = Math.max(...aprov.map(p => p.nome.length));
+  const linhas = aprov.map(p => {
+    const g = _cont.grupos[p.id] ? '✅' : '❌';
+    const br = (_cont.bracket[p.id] || 0);
+    const mm = (_cont.mataMata[p.id] || 0);
+    return `${p.nome.padEnd(maxNome,' ')}  C1${g} C2:${String(br).padStart(2)} C3:${String(mm).padStart(2)}`;
+  });
+  const sep = '━'.repeat(Math.min(maxNome + 16, 34));
+  const data = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  abrirModal([`📊 *Bolão Copa 2026 v2 — Palpites*`, `_${data}_`, sep, ...linhas, sep, `👥 ${aprov.length} aprovados · C1=grupos, C2=bracket, C3=placares`].join('\n'));
+}
+async function reportRanking() {
+  const res = await api({ action: 'getRanking' });
+  if (!res.ok || !res.ranking.length) { toast('Sem ranking.', 'aviso'); return; }
+  const med = ['🥇','🥈','🥉'];
+  const maxNome = Math.max(...res.ranking.map(r => r.nome.length));
+  const linhas = res.ranking.map(r => {
+    const pos = r.posicao <= 3 ? med[r.posicao-1] : ` ${String(r.posicao).padStart(2)} `;
+    return `${pos} ${r.nome.padEnd(maxNome,' ')}  ${r.pontos.toFixed(1).padStart(6)} pts`;
+  });
+  const sep = '━'.repeat(Math.min(maxNome + 18, 34));
+  const data = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  abrirModal([`🏆 *Bolão Copa 2026 v2 — Ranking*`, `_${data}_`, sep, ...linhas, sep, `👥 ${res.totalParticipantes} · ⚽ ${res.jogosMataMataApurados}/${res.totalJogosMataMata} jogos MM apurados`].join('\n'));
+}
+function abrirModal(txt) { document.getElementById('reportTxt').value = txt; document.getElementById('modal').classList.add('aberto'); }
+function fecharModal() { document.getElementById('modal').classList.remove('aberto'); }
+function copiarReport() { navigator.clipboard.writeText(document.getElementById('reportTxt').value).then(() => toast('Copiado!', 'ok')).catch(() => toast('Copie manualmente.', 'aviso')); }
+</script>
+
+</body>
+</html>

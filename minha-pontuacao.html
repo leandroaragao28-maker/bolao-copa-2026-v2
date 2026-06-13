@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Minha pontuação — Bolão Copa 2026 v2</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .det-linha { display:grid; grid-template-columns: 1fr auto; gap:.5rem; align-items:center; padding:.5rem .2rem; border-bottom:1px solid var(--cinza-fundo); font-size:.82rem; }
+    .det-linha:last-child { border-bottom:none; }
+    .det-pts { font-weight:900; color:var(--azul); white-space:nowrap; }
+    .det-pts.zero { color:var(--cinza-sub); }
+    .vs-mini { font-size:.72rem; color:var(--cinza-sub); }
+    .ok-tag { color:var(--verde); font-weight:800; }
+    .no-tag { color:var(--cinza-sub); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📊</span>
+  <div class="header-texto">
+    <h1>Minha pontuação</h1>
+    <p id="hdrNome"></p>
+  </div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="ranking.html">Ranking</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div id="bannerPagamento" class="banner-pagamento" style="display:none;">
+    <span>⏳ <strong>Pagamento pendente.</strong> Sua pontuação só conta no ranking após a confirmação.</span>
+    <a href="cadastro.html?pagar=1">💳 Pagar</a>
+  </div>
+
+  <div class="hero" id="resumo" style="display:none;">
+    <p style="font-size:.72rem;opacity:.8;text-transform:uppercase;letter-spacing:.08em;">Pontuação total</p>
+    <h2 id="totalPts">0</h2>
+    <p id="posicaoTxt"></p>
+  </div>
+
+  <div class="pont-camadas" id="camadas" style="display:none;">
+    <div class="pont-camada c1"><div class="pc-num" id="c1n">0</div><div class="pc-lbl">Camada 1<br>Grupos</div></div>
+    <div class="pont-camada c2"><div class="pc-num" id="c2n">0</div><div class="pc-lbl">Camada 2<br>Avança</div></div>
+    <div class="pont-camada c3"><div class="pc-num" id="c3n">0</div><div class="pc-lbl">Camada 3<br>Placares</div></div>
+  </div>
+
+  <!-- Camada 1 -->
+  <div class="card">
+    <p class="card-titulo">📊 Camada 1 · Classificação dos grupos</p>
+    <div id="detC1"><div class="vazio">Carregando…</div></div>
+  </div>
+
+  <!-- Camada 2 e 3 -->
+  <div class="card">
+    <p class="card-titulo">⚽ Camadas 2 e 3 · Mata-mata</p>
+    <div id="detMM"><div class="vazio">—</div></div>
+  </div>
+
+</div>
+
+<script>
+let perfil = null;
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+  document.getElementById('hdrNome').textContent = perfil.nome;
+
+  const [rp, rg] = await Promise.all([
+    api({ action: 'getMinhaPontuacao', token: getToken() }),
+    api({ action: 'getPalpiteGrupos', token: getToken() })
+  ]);
+  if (!rp.ok) { toast(rp.msg || 'Erro.', 'erro'); return; }
+
+  if (!rp.aprovado) document.getElementById('bannerPagamento').style.display = 'flex';
+
+  document.getElementById('resumo').style.display = '';
+  document.getElementById('camadas').style.display = '';
+  document.getElementById('totalPts').textContent = (rp.totalPontos || 0).toFixed(1).replace('.0','');
+  document.getElementById('posicaoTxt').textContent = rp.posicao ? ('Posição ' + rp.posicao + 'º de ' + rp.totalParticipantes) : (rp.aprovado ? 'Aguardando resultados' : 'Pontuação liberada após pagamento');
+  document.getElementById('c1n').textContent = (rp.camada1.pontos || 0).toFixed(0);
+  document.getElementById('c2n').textContent = (rp.camada2.pontos || 0).toFixed(0);
+  document.getElementById('c3n').textContent = (rp.camada3.pontos || 0).toFixed(1).replace('.0','');
+
+  renderC1(rp, rg.ok ? rg.dados : null);
+  renderMM(rp);
+  aplicarTwemoji(document.body);
+}
+
+function renderC1(rp, meu) {
+  const classif = rp.classificacaoReal || { porGrupo: {} };
+  const det = rp.camada1.detalhe || { porGrupo: {}, terceiros: [] };
+  const cont = document.getElementById('detC1');
+  let html = '';
+  const grupos = Object.keys(classif.porGrupo).sort();
+  if (!grupos.length) { cont.innerHTML = '<div class="vazio">Sem dados.</div>'; return; }
+
+  grupos.forEach(g => {
+    const real = classif.porGrupo[g] || {};
+    const meuG = (meu && meu.grupos && meu.grupos[g]) || {};
+    const pts = det.porGrupo[g] ? det.porGrupo[g].pontos : null;
+    const realTxt = real.completo ? `1º ${nomeTime(real.pos1)} · 2º ${nomeTime(real.pos2)}` : 'em andamento';
+    const meuTxt = (meuG.pos1 || meuG.pos2) ? `1º ${nomeTime(meuG.pos1)} · 2º ${nomeTime(meuG.pos2)}` : 'sem palpite';
+    html += `<div class="det-linha">
+      <div>
+        <strong>Grupo ${g}</strong>
+        <div class="vs-mini">Você: ${meuTxt}</div>
+        <div class="vs-mini">Real: ${realTxt}</div>
+      </div>
+      <div class="det-pts ${pts ? '' : 'zero'}">${pts != null ? '+' + pts : '—'}</div>
+    </div>`;
+  });
+
+  // terceiros
+  if (det.terceiros && det.terceiros.length) {
+    const certos = det.terceiros.filter(t => t.acerto).length;
+    html += `<div style="margin-top:.7rem;padding-top:.6rem;border-top:2px solid var(--cinza-fundo);">
+      <strong style="font-size:.82rem;">🥉 Terceiros (${certos} certo${certos!==1?'s':''} · +${certos*2})</strong>
+      <div class="terceiros-grid" style="margin-top:.5rem;">
+        ${det.terceiros.map(t => `<div class="terceiro-chip ${t.acerto ? 'sel' : ''}" style="cursor:default;"><span class="bd">${bandeira(t.code)}</span><span>${nomeTime(t.code)}</span> ${t.acerto ? '✅' : ''}</div>`).join('')}
+      </div></div>`;
+  }
+  cont.innerHTML = html;
+}
+
+function renderMM(rp) {
+  const cont = document.getElementById('detMM');
+  const jogos = (rp.mataMata || []).filter(j => true);
+  if (!jogos.length) { cont.innerHTML = '<div class="vazio">Nenhum confronto de mata-mata definido ainda.</div>'; return; }
+  let html = '', faseAtual = '';
+  jogos.forEach(j => {
+    if (j.fase !== faseAtual) { faseAtual = j.fase; html += `<div style="font-weight:800;font-size:.8rem;color:var(--azul);margin:.7rem 0 .3rem;">${j.faseLabel}</div>`; }
+    const pickTxt = j.pick ? nomeTime(j.pick) : '—';
+    const palpTxt = j.palp ? `${j.palp.gols1}×${j.palp.gols2}` : '—';
+    const realTxt = j.real ? `${j.real.gols1}×${j.real.gols2}${j.real.vencedor ? ' (' + nomeTime(j.real.vencedor) + ')' : ''}` : 'a jogar';
+    const ptsA = j.ptsAvanca != null ? j.ptsAvanca : null;
+    const ptsP = j.ptsPlacar != null ? j.ptsPlacar : null;
+    const somaPts = (ptsA || 0) + (ptsP || 0);
+    html += `<div class="det-linha">
+      <div>
+        <strong>${nomeTime(j.time1)} × ${nomeTime(j.time2)}</strong>
+        <div class="vs-mini">Avança: ${pickTxt}${ptsA != null ? (ptsA > 0 ? ' <span class="ok-tag">✓</span>' : ' <span class="no-tag">✗</span>') : ''} · Placar: ${palpTxt}</div>
+        <div class="vs-mini">Real: ${realTxt}</div>
+      </div>
+      <div class="det-pts ${somaPts ? '' : 'zero'}">${(ptsA != null || ptsP != null) ? '+' + somaPts.toFixed(1).replace('.0','') : '—'}</div>
+    </div>`;
+  });
+  cont.innerHTML = html;
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html" class="ativo"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>
