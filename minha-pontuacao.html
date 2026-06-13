@@ -77,7 +77,8 @@
     .mp-legenda { display:flex; gap:1rem; flex-wrap:wrap; font-size:.7rem; font-weight:700; color:var(--cinza-sub); margin-bottom:.8rem; padding-bottom:.6rem; border-bottom:1px solid #EEF1F6; }
     .mp-legenda i { width:.9rem; height:.9rem; border-radius:3px; display:inline-block; vertical-align:-2px; margin-right:.3rem; }
     .mp-legenda .g { background:#81C784; } .mp-legenda .y { background:#FFD54F; }
-    .avok { background:#E8F5E9; color:#1B5E20; padding:.04rem .32rem; border-radius:5px; }
+    .avok { background:#E8F5E9; color:#1B5E20; padding:.04rem .34rem; border-radius:5px; font-weight:800; }
+    .hl-y { background:#FFF8E1; color:#F57F17; padding:.04rem .34rem; border-radius:5px; font-weight:800; }
   </style>
 </head>
 <body>
@@ -231,13 +232,15 @@ function renderMM(rp) {
     if (j.fase !== faseAtual) { faseAtual = j.fase; html += `<div class="fase-sub">${j.faseLabel}</div>`; }
     const acertouAvanca = j.real && j.real.vencedor && j.pick && j.pick === j.real.vencedor;
     const pickHtml = j.pick ? `<b class="${acertouAvanca ? 'avok' : ''}">${nomeTime(j.pick)}</b>` : '—';
-    const palpTxt = j.palp ? `${j.palp.gols1}×${j.palp.gols2}` : '—';
+    // placar: verde se exato (15), amarelo se acerto parcial (10/7,5/5), neutro se 0
+    const pcls = j.ptsPlacar == null ? '' : (j.ptsPlacar >= 15 ? 'avok' : (j.ptsPlacar > 0 ? 'hl-y' : ''));
+    const palpHtml = j.palp ? `<b class="${pcls}">${j.palp.gols1}×${j.palp.gols2}</b>` : '—';
     const realTxt = j.real ? `${j.real.gols1}×${j.real.gols2}${j.real.vencedor ? ' → ' + nomeTime(j.real.vencedor) : ''}` : '<span style="color:var(--cinza-sub);">a jogar</span>';
     const soma = (j.ptsAvanca != null || j.ptsPlacar != null) ? (Number(j.ptsAvanca || 0) + Number(j.ptsPlacar || 0)) : null;
     html += `<div class="erow">
       <div class="einfo">
         <div class="eline" style="font-weight:800;font-size:.85rem;"><span class="etxt">${bandeira(j.time1)} ${nomeTime(j.time1)} <span style="color:var(--cinza-sub);font-weight:600;">×</span> ${nomeTime(j.time2)} ${bandeira(j.time2)}</span></div>
-        <div class="eline"><span class="tag voce">Você</span><span class="etxt">placar <b>${palpTxt}</b> · avança ${pickHtml}</span></div>
+        <div class="eline"><span class="tag voce">Você</span><span class="etxt">placar ${palpHtml} · avança ${pickHtml}</span></div>
         <div class="eline"><span class="tag real">Real</span><span class="etxt">${realTxt}</span></div>
       </div>
       ${ptsPill(soma)}

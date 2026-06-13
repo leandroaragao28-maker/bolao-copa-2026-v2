@@ -125,6 +125,20 @@ function horarioJogo(j) {
 function prazoLimite(j) { return horarioJogo(j).getTime() - ANTECEDENCIA_MS; }
 function palpiteEncerrado(j) { return Date.now() >= prazoLimite(j); }
 
+// Pontos do placar (espelho de calcularPontos do Code.gs): 15/10/7,5/5/0.
+function calcPlacar(p1, p2, r1, r2) {
+  p1 = parseInt(p1); p2 = parseInt(p2); r1 = parseInt(r1); r2 = parseInt(r2);
+  if ([p1, p2, r1, r2].some(isNaN)) return 0;
+  const a1 = p1 === r1, a2 = p2 === r2;
+  if (a1 && a2) return 15;
+  if (r1 === r2 && (a1 || a2)) return 7.5;
+  if (r1 > r2 && a1) return 10;
+  if (r2 > r1 && a2) return 10;
+  if (r1 > r2 && a2) return 5;
+  if (r2 > r1 && a1) return 5;
+  return 0;
+}
+
 function formatarTempo(ms) {
   const t = Math.floor(ms / 1000);
   const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;

@@ -16,6 +16,13 @@
     .av-btn { border: 2px solid var(--cinza-borda); background: var(--branco); border-radius: 6px; padding: .2rem .5rem; font-size: .68rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: .25rem; }
     .av-btn .bd { font-size: .95rem; }
     .av-btn.sel { border-color: var(--azul); background: var(--azul); color: #fff; }
+    /* Resultado + acerto (jogo já disputado) */
+    .resultado-mm { grid-column: 1 / -1; margin-top: .55rem; padding-top: .5rem; border-top: 1px dashed var(--cinza-borda); display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .74rem; flex-wrap: wrap; }
+    .resultado-mm .rm-l { display: flex; flex-direction: column; gap: .2rem; text-align: left; }
+    .res-g { background: #E8F5E9; color: #1B5E20; padding: .05rem .35rem; border-radius: 5px; font-weight: 800; }
+    .res-y { background: #FFF8E1; color: #F57F17; padding: .05rem .35rem; border-radius: 5px; font-weight: 800; }
+    .res-n { color: var(--cinza-sub); font-weight: 700; }
+    .rm-pts { font-weight: 900; color: var(--verde); background: #E8F5E9; border-radius: 20px; padding: .3rem .7rem; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -75,6 +82,7 @@ let perfil = null;
 let jogos = [];
 let faseFiltro = 'todas';
 let golsTravado = false;
+let RESULTS_MM = {};        // resultados reais dos jogos (placar + vencedor)
 const palpites = {};        // {id:{jogoId,gols1,gols2,vencedor}}
 const palpitesSalvos = {};  // do servidor
 
@@ -93,6 +101,7 @@ async function init() {
   ]);
   if (!rmm.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
   jogos = normJogosMM(rmm.jogos);
+  RESULTS_MM = rmm.resultados || {};
   if (rp.ok && rp.palpites) rp.palpites.forEach(p => palpitesSalvos[p.jogoId] = { gols1: p.gols1, gols2: p.gols2, vencedor: p.vencedor });
 
   // gols da final
@@ -172,7 +181,8 @@ function render() {
           </div>
           <div class="avanca-row" id="avanca_${j.id}"></div>
         </div>
-        <div class="time time-direita"><span>${nomeTime(j.time2)}</span><span class="bandeira">${bandeira(j.time2)}</span></div>`;
+        <div class="time time-direita"><span>${nomeTime(j.time2)}</span><span class="bandeira">${bandeira(j.time2)}</span></div>
+        ${resultadoHTML(j)}`;
       cont.appendChild(card);
       renderAvanca(j.id);
     });
@@ -187,9 +197,34 @@ function temPalpite(id) { const p = palpites[id]; return p && p.gols1 !== '' && 
 
 function jogoPorId(id) { return jogos.find(j => j.id === id); }
 
+// Rodapé de acerto para jogos já disputados (resultado conhecido)
+function resultadoHTML(j) {
+  const res = RESULTS_MM[j.id];
+  if (!res) return '';
+  const pal = palpitesSalvos[j.id];
+  let seu = '<span class="res-n">você não palpitou</span>', total = 0;
+  if (pal) {
+    const pts = calcPlacar(pal.gols1, pal.gols2, res.gols1, res.gols2);
+    const pcls = pts >= 15 ? 'res-g' : (pts > 0 ? 'res-y' : 'res-n');
+    const acertou = pal.vencedor && res.vencedor && pal.vencedor === res.vencedor;
+    const ptsAv = acertou ? (FASES_INFO[j.fase] ? FASES_INFO[j.fase].pontos : 0) : 0;
+    total = pts + ptsAv;
+    const avHtml = pal.vencedor ? `<span class="${acertou ? 'res-g' : 'res-n'}">${nomeTime(pal.vencedor)}${acertou ? ' ✓' : ''}</span>` : '<span class="res-n">—</span>';
+    seu = `placar <span class="${pcls}">${pal.gols1}×${pal.gols2}</span> · avança ${avHtml}`;
+  }
+  return `<div class="resultado-mm">
+    <div class="rm-l">
+      <span>🏁 <b>Resultado:</b> ${res.gols1}×${res.gols2}${res.vencedor ? ' → ' + nomeTime(res.vencedor) : ''}</span>
+      <span>Seu palpite: ${seu}</span>
+    </div>
+    <span class="rm-pts">+${total.toFixed(1).replace('.0', '')} pts</span>
+  </div>`;
+}
+
 function renderAvanca(id) {
   const el = document.getElementById('avanca_' + id);
   if (!el) return;
+  if (RESULTS_MM[id]) { el.innerHTML = ''; return; } // resultado já exibido no rodapé do card
   const j = jogoPorId(id);
   const p = palpites[id] || {};
   const travado = palpiteEncerrado(j);
