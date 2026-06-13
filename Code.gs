@@ -7,18 +7,24 @@
 //   Camada 3 — Placares do mata-mata (corte por jogo, igual à v1)
 // Autenticação: e-mail + senha (SHA-256 com salt por usuário).
 //
-// COMO PUBLICAR:
-// 1. script.google.com → Novo projeto → cole este arquivo.
-// 2. Crie uma planilha nova, copie o ID para SPREADSHEET_ID abaixo.
-// 3. Rode a função inicializar() uma vez (cria todas as abas).
-// 4. Implantar → Nova implantação → Web App
+// COMO PUBLICAR (recomendado: script VINCULADO à planilha):
+// 1. Abra a planilha → Extensões → Apps Script → cole este arquivo.
+//    (Vinculado, NÃO precisa preencher SPREADSHEET_ID — ele detecta sozinho.)
+// 2. Defina ADMIN_PASSWORD abaixo.
+// 3. Rode a função inicializar() uma vez (autorize o acesso) — cria todas as abas.
+// 4. Implantar → Nova implantação → App da Web
 //      Executar como: Eu   ·   Quem tem acesso: Qualquer pessoa (Anyone)
 // 5. Copie a URL /exec e cole em config.js (CONFIG.API_URL).
 // 6. A cada alteração aqui, publique NOVA VERSÃO da implantação.
+//
+// Alternativa (projeto separado em script.google.com): preencha SPREADSHEET_ID
+// com o ID da planilha (parte da URL entre /d/ e /edit).
 // ============================================================
 
-const SPREADSHEET_ID = 'COLE_AQUI_O_ID_DA_PLANILHA'; // ← substitua no editor do Apps Script
-const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';     // ← defina no editor (NÃO versionar a senha real)
+// Deixe como está se o script estiver VINCULADO à planilha (Extensões → Apps Script).
+// Só preencha se usar um projeto separado/standalone.
+const SPREADSHEET_ID = '';                         // ← vinculado: deixe vazio. Standalone: cole o ID.
+const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';   // ← defina no editor (NÃO versionar a senha real)
 
 const VALOR_INSCRICAO = 100;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
@@ -161,7 +167,14 @@ function camada1Encerrada() { return Date.now() >= getTravaCamada1(); }
 // ════════════════════════════════════════════════════════════
 // PLANILHA — acesso e inicialização
 // ════════════════════════════════════════════════════════════
-function _ss() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
+function _ss() {
+  // Vinculado à planilha (Extensões → Apps Script): usa a planilha ativa.
+  // Standalone: usa o SPREADSHEET_ID informado.
+  if (SPREADSHEET_ID && SPREADSHEET_ID.indexOf('COLE') < 0) return SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ativa = SpreadsheetApp.getActiveSpreadsheet();
+  if (ativa) return ativa;
+  throw new Error('Sem planilha: vincule o script a uma planilha (Extensões → Apps Script) ou preencha SPREADSHEET_ID.');
+}
 
 function _aba(nome, cabecalho) {
   const ss = _ss();

@@ -42,12 +42,14 @@ Sistema web do bolão da Copa 2026, **versão 2** — foca na **fase eliminatór
 
 ## 1. Backend — Google Apps Script
 
-1. Crie uma **planilha** nova no Google Sheets e copie o **ID** da URL (`/d/<ID>/edit`).
-2. Em `script.google.com` → **Novo projeto** → cole o conteúdo de [`Code.gs`](Code.gs).
-3. No topo do `Code.gs`, ajuste:
-   - `SPREADSHEET_ID` = o ID da planilha.
+**Recomendado — script vinculado à planilha (não precisa do ID):**
+
+1. Crie uma **planilha** nova no Google Sheets.
+2. Nela: **Extensões → Apps Script** → cole o conteúdo de [`Code.gs`](Code.gs). (O script já fica vinculado à planilha; `SPREADSHEET_ID` pode ficar vazio.)
+3. No topo do `Code.gs`, defina:
    - `ADMIN_PASSWORD` = uma senha forte de administrador.
    - (opcional) `VALOR_INSCRICAO`, premiação.
+   - `SPREADSHEET_ID` = deixe **vazio** (vinculado). Só preencha se usar um projeto standalone em `script.google.com`.
 4. Rode a função **`inicializar()`** uma vez (cria todas as abas). Autorize o acesso à planilha e ao envio de e-mail (`MailApp`).
 5. **Implantar → Nova implantação → Tipo: App da Web**
    - *Executar como:* **Eu**
