@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>MOCKUP · Mata-mata — Minha Pontuação</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .mp-card { background:#fff; border-radius:18px; box-shadow:0 3px 16px rgba(13,19,86,.06); padding:1.1rem 1rem; margin-bottom:1rem; }
+    .mp-sec { display:flex; align-items:center; gap:.6rem; margin-bottom:.9rem; }
+    .mp-sec .star { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#1A237E,#3949AB); display:flex; align-items:center; justify-content:center; font-size:1rem; }
+    .mp-sec h3 { font-size:1.08rem; font-weight:900; color:var(--azul); }
+    .mp-sec h3 small { display:block; font-size:.66rem; font-weight:700; color:var(--cinza-sub); }
+    .fase-sub { font-size:.7rem; font-weight:800; color:#7B1FA2; background:#F3E5F5; display:inline-block; padding:.2rem .6rem; border-radius:20px; margin:.5rem 0 .6rem; }
+
+    /* Card de jogo (NOVO layout proposto) */
+    .jmm { border:2px solid var(--cinza-borda); border-radius:12px; padding:.65rem .75rem; margin-bottom:.7rem; }
+    .jmm-head { display:flex; align-items:center; justify-content:center; gap:.55rem; font-weight:900; font-size:.95rem; margin-bottom:.55rem; }
+    .jmm-team { display:flex; align-items:center; gap:.35rem; color:var(--cinza-texto); }
+    .jmm-team .bd { font-size:1.3rem; }
+    .jmm-x { color:var(--cinza-sub); font-weight:600; }
+    .jmm-cols { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .jmm-col { background:var(--cinza-fundo); border-radius:9px; padding:.5rem .55rem; }
+    .jmm-clbl { display:flex; align-items:center; justify-content:space-between; gap:.3rem; font-size:.6rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--cinza-sub); margin-bottom:.45rem; }
+    .jmm-row { display:flex; align-items:center; gap:.4rem; font-size:.82rem; margin-bottom:.25rem; min-height:1.25rem; }
+    .jmm-row:last-child { margin-bottom:0; }
+    .jmm-row .bd { font-size:1.05rem; }
+    .jmm-pts { font-weight:900; font-size:.78rem; padding:.12rem .5rem; border-radius:20px; }
+    .jmm-pts.g { background:#E8F5E9; color:#1B5E20; }
+    .jmm-pts.y { background:#FFF8E1; color:#F57F17; }
+    .jmm-pts.n { background:#F1F3F5; color:#9AA5B1; }
+    .hl-g { background:#E8F5E9; color:#1B5E20; padding:.04rem .34rem; border-radius:5px; font-weight:800; }
+    .hl-y { background:#FFF8E1; color:#F57F17; padding:.04rem .34rem; border-radius:5px; font-weight:800; }
+    .val { font-weight:800; }
+    .neutro { color:var(--cinza-sub); }
+    .mock-banner { background:var(--ouro-claro); border:2px solid var(--ouro); border-radius:10px; padding:.6rem .8rem; font-size:.82rem; color:#4E342E; margin-bottom:1rem; }
+  </style>
+</head>
+<body>
+<header>
+  <span class="logo">📊</span>
+  <div class="header-texto"><h1>MOCKUP · Mata-mata</h1><p>proposta de layout</p></div>
+</header>
+
+<div class="container">
+  <div class="mock-banner">🔎 <strong>Mockup para avaliação</strong> — times centralizados (sigla + bandeira), e abaixo duas colunas: <strong>esquerda = placar</strong> (Camada 3), <strong>direita = quem avança</strong> (Camada 2), cada uma com Você/Real e a pontuação da categoria.</div>
+
+  <div class="mp-card">
+    <div class="mp-sec"><div class="star">⚽</div><h3>Mata-mata<small>Camadas 2 e 3 · quem avança + placar</small></h3></div>
+    <div class="fase-sub">Rodada de 32</div>
+    <div id="lista"></div>
+  </div>
+</div>
+
+<script>
+// Cada jogo: time1, time2, palpite (placar+avança), real (placar+vencedor), pontos por categoria
+const JOGOS = [
+  { t1:'AFS', t2:'SUI', vp:'1×1', vplCls:'y', va:'AFS', vaCls:'g', rp:'2×1', ra:'AFS', ptsPl:5,  ptsAv:2 },
+  { t1:'MAR', t2:'TUN', vp:'2×1', vplCls:'y', va:'MAR', vaCls:'', rp:'0×1', ra:'TUN', ptsPl:10, ptsAv:0 },
+  { t1:'CUR', t2:'NOR', vp:'2×1', vplCls:'',  va:'CUR', vaCls:'g', rp:'3×0', ra:'CUR', ptsPl:0,  ptsAv:2 },
+  { t1:'SEN', t2:'EUA', vp:null,  vplCls:'',  va:null,  vaCls:'', rp:'2×1', ra:'SEN', ptsPl:0,  ptsAv:0, semp:true },
+];
+
+function ptsCls(n, tipo) { if (n >= (tipo==='pl'?15:1) && tipo==='pl') return 'g'; if (n>0) return tipo==='av'?'g':'y'; return 'n'; }
+function teamHTML(s) { return `<span class="bd">${bandeira(s)}</span> ${s}`; }
+
+document.getElementById('lista').innerHTML = JOGOS.map(j => {
+  const vpl = j.vp ? `<b class="${j.vplCls?'hl-'+j.vplCls:''} val">${j.vp}</b>` : '<span class="neutro">—</span>';
+  const va  = j.va ? `<b class="${j.vaCls?'hl-'+j.vaCls:''} val">${teamHTML(j.va)}</b>` : '<span class="neutro">—</span>';
+  const ptsPlCls = j.semp ? 'n' : (j.ptsPl>=15?'g':(j.ptsPl>0?'y':'n'));
+  const ptsAvCls = j.semp ? 'n' : (j.ptsAv>0?'g':'n');
+  return `<div class="jmm">
+    <div class="jmm-head">
+      <span class="jmm-team"><span class="bd">${bandeira(j.t1)}</span> ${j.t1}</span>
+      <span class="jmm-x">×</span>
+      <span class="jmm-team">${j.t2} <span class="bd">${bandeira(j.t2)}</span></span>
+    </div>
+    <div class="jmm-cols">
+      <div class="jmm-col">
+        <div class="jmm-clbl"><span>Placar</span><span class="jmm-pts ${ptsPlCls}">${j.semp?'—':'+'+j.ptsPl}</span></div>
+        <div class="jmm-row"><span class="tag voce">Você</span> ${vpl}</div>
+        <div class="jmm-row"><span class="tag real">Real</span> <span class="val">${j.rp}</span></div>
+      </div>
+      <div class="jmm-col">
+        <div class="jmm-clbl"><span>Quem avança</span><span class="jmm-pts ${ptsAvCls}">${j.semp?'—':'+'+j.ptsAv}</span></div>
+        <div class="jmm-row"><span class="tag voce">Você</span> ${va}</div>
+        <div class="jmm-row"><span class="tag real">Real</span> <span class="val">${teamHTML(j.ra)}</span></div>
+      </div>
+    </div>
+  </div>`;
+}).join('');
+aplicarTwemoji(document.body);
+</script>
+
+<style>
+  .tag { font-size:.58rem; font-weight:800; padding:.13rem .42rem; border-radius:5px; text-transform:uppercase; letter-spacing:.03em; }
+  .tag.voce { background:#E3F2FD; color:#1565C0; }
+  .tag.real { background:#E8F5E9; color:#2E7D32; }
+</style>
+</body>
+</html>
