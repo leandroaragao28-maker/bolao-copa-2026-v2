@@ -64,6 +64,20 @@
     .epts.zero { background:#F1F3F5; color:#9AA5B1; }
     .epts.wait { background:#FFF3E0; color:#E65100; }
     .fase-sub { font-size:.7rem; font-weight:800; color:#7B1FA2; background:#F3E5F5; display:inline-block; padding:.2rem .6rem; border-radius:20px; margin:.7rem 0 .3rem; }
+
+    /* Linha com slots (medalha + bandeira + sigla) e destaque de acerto */
+    .einfo2 { flex:1; min-width:0; display:grid; grid-template-columns:max-content 1fr 1fr; gap:.35rem .45rem; align-items:center; }
+    .slot { display:flex; align-items:center; gap:.3rem; font-weight:800; font-size:.84rem; padding:.16rem .42rem; border-radius:7px; min-width:0; }
+    .slot .med { font-size:.85rem; flex-shrink:0; }
+    .slot .bd { font-size:1.05rem; flex-shrink:0; }
+    .slot .cod { letter-spacing:.02em; }
+    .slot.ok   { background:#E8F5E9; color:#1B5E20; box-shadow:inset 0 0 0 1.6px #81C784; }
+    .slot.warn { background:#FFF8E1; color:#F57F17; box-shadow:inset 0 0 0 1.6px #FFD54F; }
+    .slot.em, .slot.semp { color:var(--cinza-sub); font-weight:700; font-size:.78rem; grid-column:2 / -1; }
+    .mp-legenda { display:flex; gap:1rem; flex-wrap:wrap; font-size:.7rem; font-weight:700; color:var(--cinza-sub); margin-bottom:.8rem; padding-bottom:.6rem; border-bottom:1px solid #EEF1F6; }
+    .mp-legenda i { width:.9rem; height:.9rem; border-radius:3px; display:inline-block; vertical-align:-2px; margin-right:.3rem; }
+    .mp-legenda .g { background:#81C784; } .mp-legenda .y { background:#FFD54F; }
+    .avok { background:#E8F5E9; color:#1B5E20; padding:.04rem .32rem; border-radius:5px; }
   </style>
 </head>
 <body>
@@ -154,6 +168,12 @@ function ptsPill(v) {
   return `<div class="epts ${cls}">${n > 0 ? '+' : ''}${n.toFixed(1).replace('.0', '')}</div>`;
 }
 
+// Slot de seleção (medalha + bandeira + sigla). cls: 'ok' (verde, exato), 'warn' (amarelo, só o time), '' (neutro).
+function slot(sigla, medal, cls) {
+  if (!sigla) return '<span class="slot"></span>';
+  return `<span class="slot ${cls}" title="${nomeTime(sigla)}"><span class="med">${medal}</span><span class="bd">${bandeira(sigla)}</span><span class="cod">${sigla}</span></span>`;
+}
+
 function renderC1(rp, meu) {
   const classif = rp.classificacaoReal || { porGrupo: {} };
   const det = rp.camada1.detalhe || { porGrupo: {}, terceiros: [] };
@@ -161,22 +181,31 @@ function renderC1(rp, meu) {
   const grupos = Object.keys(classif.porGrupo).sort();
   if (!grupos.length) { cont.innerHTML = '<div class="vazio">Sem dados ainda.</div>'; return; }
 
-  let html = '';
+  let html = '<div class="mp-legenda"><span><i class="g"></i>acertou time e posição (+5)</span><span><i class="y"></i>acertou só o time (+3)</span></div>';
   grupos.forEach(g => {
     const real = classif.porGrupo[g] || {};
     const meuG = (meu && meu.grupos && meu.grupos[g]) || {};
     const pts = det.porGrupo[g] ? det.porGrupo[g].pontos : null;
-    const meuTxt = (meuG.pos1 || meuG.pos2)
-      ? `1º <b>${nomeTime(meuG.pos1)}</b> · 2º <b>${nomeTime(meuG.pos2)}</b>`
-      : '<span style="color:var(--cinza-sub);">sem palpite</span>';
-    const realTxt = real.completo
-      ? `1º <b>${nomeTime(real.pos1)}</b> · 2º <b>${nomeTime(real.pos2)}</b>`
-      : '<span style="color:var(--cinza-sub);">em andamento</span>';
+
+    // verde se acertou time+posição; amarelo se acertou só o time (entrou no top 2 em outra posição)
+    function cls(meuPos, posExata, posOutra) {
+      if (!real.completo || !meuPos) return '';
+      if (meuPos === posExata) return 'ok';
+      if (meuPos === posOutra) return 'warn';
+      return '';
+    }
+    const voce = (meuG.pos1 || meuG.pos2)
+      ? slot(meuG.pos1, '🥇', cls(meuG.pos1, real.pos1, real.pos2)) + slot(meuG.pos2, '🥈', cls(meuG.pos2, real.pos2, real.pos1))
+      : '<span class="slot semp">sem palpite</span>';
+    const reais = real.completo
+      ? slot(real.pos1, '🥇', '') + slot(real.pos2, '🥈', '')
+      : '<span class="slot em">em andamento</span>';
+
     html += `<div class="erow">
       <div class="ehex"><span>${g}</span></div>
-      <div class="einfo">
-        <div class="eline"><span class="tag voce">Você</span><span class="etxt">${meuTxt}</span></div>
-        <div class="eline"><span class="tag real">Real</span><span class="etxt">${realTxt}</span></div>
+      <div class="einfo2">
+        <span class="tag voce">Você</span>${voce}
+        <span class="tag real">Real</span>${reais}
       </div>
       ${ptsPill(real.completo ? (pts || 0) : null)}
     </div>`;
@@ -200,14 +229,15 @@ function renderMM(rp) {
   let html = '', faseAtual = '';
   jogos.forEach(j => {
     if (j.fase !== faseAtual) { faseAtual = j.fase; html += `<div class="fase-sub">${j.faseLabel}</div>`; }
-    const pickTxt = j.pick ? nomeTime(j.pick) : '—';
+    const acertouAvanca = j.real && j.real.vencedor && j.pick && j.pick === j.real.vencedor;
+    const pickHtml = j.pick ? `<b class="${acertouAvanca ? 'avok' : ''}">${nomeTime(j.pick)}</b>` : '—';
     const palpTxt = j.palp ? `${j.palp.gols1}×${j.palp.gols2}` : '—';
     const realTxt = j.real ? `${j.real.gols1}×${j.real.gols2}${j.real.vencedor ? ' → ' + nomeTime(j.real.vencedor) : ''}` : '<span style="color:var(--cinza-sub);">a jogar</span>';
     const soma = (j.ptsAvanca != null || j.ptsPlacar != null) ? (Number(j.ptsAvanca || 0) + Number(j.ptsPlacar || 0)) : null;
     html += `<div class="erow">
       <div class="einfo">
         <div class="eline" style="font-weight:800;font-size:.85rem;"><span class="etxt">${bandeira(j.time1)} ${nomeTime(j.time1)} <span style="color:var(--cinza-sub);font-weight:600;">×</span> ${nomeTime(j.time2)} ${bandeira(j.time2)}</span></div>
-        <div class="eline"><span class="tag voce">Você</span><span class="etxt">placar <b>${palpTxt}</b> · avança <b>${pickTxt}</b></span></div>
+        <div class="eline"><span class="tag voce">Você</span><span class="etxt">placar <b>${palpTxt}</b> · avança ${pickHtml}</span></div>
         <div class="eline"><span class="tag real">Real</span><span class="etxt">${realTxt}</span></div>
       </div>
       ${ptsPill(soma)}
