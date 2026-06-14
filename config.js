@@ -147,6 +147,15 @@ function formatarTempo(ms) {
   if (m > 0) return `fecha em ${m}min ${String(s).padStart(2, '0')}s`;
   return `fecha em ${s}s`;
 }
+// Contagem regressiva completa e sempre com segundos (ex.: "10d 08h 26m 26s").
+function fmtCountdown(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const p = n => String(n).padStart(2, '0');
+  if (d > 0) return d + 'd ' + p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
+  if (h > 0) return p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
+  return p(m) + 'm ' + p(s) + 's';
+}
 function formatarData(iso) {
   if (!iso) return '-';
   const d = new Date(iso);

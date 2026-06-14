@@ -219,14 +219,6 @@ function buildFaseCards(jogosMM) {
 const TIMERS = {}; // id -> { deadline, label }
 function regTimer(id, deadline, label) { if (deadline) TIMERS[id] = { deadline, label }; }
 function setTimerFechado(id) { const el = document.getElementById(id); if (el) { el.className = 'cc-timer encerrado'; el.innerHTML = '🔒 Palpites encerrados'; } }
-function fmtCountdown(ms) {
-  const t = Math.max(0, Math.floor(ms / 1000));
-  const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-  const p = n => String(n).padStart(2, '0');
-  if (d > 0) return d + 'd ' + p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
-  if (h > 0) return p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
-  return p(m) + 'm ' + p(s) + 's';
-}
 function tickTimers() {
   const agora = Date.now();
   Object.keys(TIMERS).forEach(id => {

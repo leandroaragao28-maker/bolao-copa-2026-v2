@@ -329,7 +329,7 @@ function atualizarTimers() {
       }
       el.className = 'jogo-timer encerrado'; el.textContent = '🔒 encerrado'; return;
     }
-    el.textContent = '⏱ ' + formatarTempo(rest);
+    el.innerHTML = '⏳ Fecha em <strong>' + fmtCountdown(rest) + '</strong>';
     el.className = rest <= 10*60*1000 ? 'jogo-timer muito-urgente' : rest <= 60*60*1000 ? 'jogo-timer urgente' : 'jogo-timer';
   });
 }
