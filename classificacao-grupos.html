@@ -45,8 +45,8 @@
   <div class="card" id="cardTerceiros" style="display:none;">
     <p class="card-titulo">🥉 8 melhores terceiros</p>
     <p class="form-hint" style="margin-bottom:.8rem;">
-      Avançam 8 dos 12 terceiros colocados. Escolha <strong>8 times</strong> (entre os que você <strong>não</strong> colocou em 1º/2º)
-      que você acha que vão se classificar como melhores terceiros — em qualquer ordem.
+      Avançam 8 dos 12 terceiros colocados. Escolha <strong>8 times</strong> (entre os que você <strong>não</strong> colocou em 1º/2º),
+      <strong>no máximo 1 por grupo</strong> (só um time de cada grupo pode terminar em 3º) — em qualquer ordem.
       Selecionados: <strong id="contTerceiros">0</strong>/8 · vale 2 pts cada acerto.
     </p>
     <div class="terceiros-grid" id="terceirosGrid"></div>
@@ -157,6 +157,9 @@ function poolTerceiros() {
   Object.keys(GRUPOS).sort().forEach(g => GRUPOS[g].forEach(t => { if (!escolhidos[t]) todos.push(t); }));
   return todos;
 }
+function grupoDe(t) { for (const g of Object.keys(GRUPOS)) if (GRUPOS[g].indexOf(t) >= 0) return g; return null; }
+// só um time por grupo pode ser 3º colocado
+function grupoJaTemTerceiro(g, exceto) { return terceiros.some(t => t !== exceto && grupoDe(t) === g); }
 
 function renderTerceiros() {
   const card = document.getElementById('cardTerceiros');
@@ -171,10 +174,11 @@ function renderTerceiros() {
   }
   const pool = poolTerceiros(); // 24 times restantes
   grid.innerHTML = pool.map(t => {
+    const g = grupoDe(t);
     const sel = terceiros.indexOf(t) >= 0;
-    const bloq = !sel && terceiros.length >= 8;
+    const bloq = !sel && (terceiros.length >= 8 || grupoJaTemTerceiro(g));
     return `<div class="terceiro-chip ${sel ? 'sel' : ''} ${(bloq || encerrado) ? 'disabled' : ''}" onclick="toggleTerceiro('${t}')">
-      <span class="bd">${bandeira(t)}</span><span>${nomeTime(t)}</span>${sel ? ' ✓' : ''}</div>`;
+      <span class="bd">${bandeira(t)}</span><span style="flex:1;min-width:0;">${nomeTime(t)}</span>${sel ? '<span style="color:var(--ouro-escuro);font-weight:900;">✓</span>' : ''}<span style="font-size:.6rem;font-weight:800;color:var(--cinza-sub);background:rgba(0,0,0,.05);border-radius:4px;padding:.05rem .3rem;">${g}</span></div>`;
   }).join('');
   aplicarTwemoji(grid);
 }
@@ -182,8 +186,13 @@ function renderTerceiros() {
 function toggleTerceiro(t) {
   if (encerrado) return;
   const i = terceiros.indexOf(t);
-  if (i >= 0) terceiros.splice(i, 1);
-  else { if (terceiros.length >= 8) { toast('Você já escolheu 8 terceiros.', 'aviso'); return; } terceiros.push(t); }
+  if (i >= 0) { terceiros.splice(i, 1); }
+  else {
+    if (terceiros.length >= 8) { toast('Você já escolheu 8 terceiros.', 'aviso'); return; }
+    const g = grupoDe(t);
+    if (grupoJaTemTerceiro(g)) { toast('Só pode escolher 1 terceiro por grupo (Grupo ' + g + ').', 'aviso'); return; }
+    terceiros.push(t);
+  }
   renderTerceiros();
   marcarSujo();
 }
