@@ -231,8 +231,54 @@ function aplicarTwemoji(raiz) {
   } catch (e) {}
 
   if ('serviceWorker' in navigator) {
+    let atualizando = false;
+
+    const mostrarBannerUpdate = function (sw) {
+      if (document.getElementById('pwa-update-banner') || !document.body) return;
+      const bar = document.createElement('div');
+      bar.id = 'pwa-update-banner';
+      bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9500;display:flex;align-items:center;gap:.6rem;justify-content:center;flex-wrap:wrap;background:#1A237E;color:#fff;font-size:.85rem;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.3);padding:calc(env(safe-area-inset-top,0px) + .55rem) .8rem .55rem;';
+      const txt = document.createElement('span');
+      txt.textContent = '🔄 Nova versão disponível';
+      const btn = document.createElement('button');
+      btn.textContent = 'Atualizar';
+      btn.style.cssText = 'background:#F9A825;color:#1A237E;border:none;border-radius:999px;padding:.35rem .9rem;font-weight:800;font-size:.82rem;cursor:pointer;';
+      btn.onclick = function () {
+        atualizando = true;
+        btn.textContent = 'Atualizando…'; btn.disabled = true;
+        try { sw.postMessage({ type: 'SKIP_WAITING' }); } catch (e) { window.location.reload(); }
+      };
+      const fechar = document.createElement('button');
+      fechar.setAttribute('aria-label', 'Dispensar');
+      fechar.textContent = '✕';
+      fechar.style.cssText = 'background:transparent;color:#fff;border:none;font-size:1rem;line-height:1;cursor:pointer;opacity:.8;';
+      fechar.onclick = function () { bar.remove(); };
+      bar.appendChild(txt); bar.appendChild(btn); bar.appendChild(fechar);
+      document.body.appendChild(bar);
+    };
+
+    // recarrega só quando o usuário aceitou atualizar (evita reload no 1º controle)
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (atualizando) window.location.reload();
+    });
+
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () {});
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        const acompanhar = function (sw) {
+          if (!sw) return;
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) { mostrarBannerUpdate(sw); return; }
+          sw.addEventListener('statechange', function () {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) mostrarBannerUpdate(sw);
+          });
+        };
+        if (reg.waiting && navigator.serviceWorker.controller) mostrarBannerUpdate(reg.waiting);
+        if (reg.installing) acompanhar(reg.installing);          // corrige a corrida (já instalando)
+        reg.addEventListener('updatefound', function () { acompanhar(reg.installing); });
+        // procura atualização ao reabrir/voltar pro app
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') reg.update().catch(function () {});
+        });
+      }).catch(function () {});
     });
   }
 

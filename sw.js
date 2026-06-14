@@ -4,7 +4,10 @@
  *   - API do Apps Script: SEMPRE rede, nunca cacheia (dados sempre frescos).
  *   - CDN (twemoji): cache-first (bandeiras carregam rápido e ficam offline).
  */
-const CACHE = 'bolao-copa-2026-v1';
+// 'VERSION' é carimbado a cada deploy pelo deploy_Bolao-Copa-2026-v2.ps1
+// (muda o sw.js → o navegador detecta atualização → mostra o banner "Nova versão").
+const VERSION = 'v1';
+const CACHE = 'bolao-copa-' + VERSION;
 
 const SHELL = [
   './',
@@ -28,11 +31,16 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
+  // NÃO chama skipWaiting aqui: o novo SW fica "esperando" até o usuário
+  // tocar em "Atualizar" no banner (ver listener 'message' abaixo).
   e.waitUntil(
-    caches.open(CACHE)
-      .then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
   );
+});
+
+// A página pede a troca imediata quando o usuário aceita atualizar.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
