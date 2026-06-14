@@ -61,6 +61,11 @@
     .mr-pos { font-size: 1.1rem; width: 1.6rem; text-align: center; }
     .mr-nome { flex: 1; min-width: 0; font-weight: 700; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mr-pts { font-weight: 900; color: var(--azul); }
+    .cc-timer { margin-top: .6rem; font-size: .72rem; font-weight: 800; color: var(--azul); background: var(--azul-fundo); border-radius: 8px; padding: .35rem .6rem; display: inline-flex; align-items: center; gap: .3rem; }
+    .cc-timer strong { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+    .cc-timer.urgente { color: #B71C1C; background: #FFEBEE; animation: pulseTimer 1s ease-in-out infinite; }
+    .cc-timer.encerrado { color: var(--cinza-sub); background: var(--cinza-fundo); font-weight: 700; }
+    @keyframes pulseTimer { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
   </style>
 </head>
 <body>
@@ -109,7 +114,8 @@
       <div><div class="cc-tit">Classificação dos grupos</div><div class="cc-sub">1º e 2º de cada grupo + 8 terceiros</div></div>
       <span class="cc-status" id="stC1">…</span>
     </div>
-    <div class="cc-desc">Preveja como cada grupo termina. Trava antes da 3ª rodada (23/jun). Vale até <strong>10 pts por grupo</strong> + 2 por terceiro certo.</div>
+    <div class="cc-desc">Preveja como cada grupo termina. Vale até <strong>10 pts por grupo</strong> + 2 por terceiro certo.</div>
+    <div class="cc-timer" id="cdC1"></div>
   </a>
 
   <!-- Cards por fase do mata-mata (gerados via JS) -->
@@ -141,7 +147,7 @@ async function init() {
   const [rk, rj, rmm] = await Promise.all([
     api({ action: 'getRanking' }),
     api({ action: 'getJogos' }),
-    api({ action: 'getJogosMataMata' })
+    api({ action: 'getChaveamento' })
   ]);
 
   // Premiação + preview
@@ -152,15 +158,18 @@ async function init() {
     preencherMini(rk.ranking || []);
   }
 
-  // Status Camada 1
+  // Status + cronômetro Camada 1
   if (rj.ok) {
     const aberto = Date.now() < rj.travaCamada1;
     setStatus('stC1', aberto, aberto ? 'Aberto' : 'Encerrado');
+    if (aberto) regTimer('cdC1', rj.travaCamada1, '⏳ Fecha em');
+    else setTimerFechado('cdC1');
   }
 
   // Cards por fase do mata-mata
   buildFaseCards(rmm.ok ? normJogosMM(rmm.jogos) : []);
   aplicarTwemoji();
+  tickTimers();
 }
 
 const FASE_CARDS = [
@@ -173,13 +182,20 @@ const FASE_CARDS = [
 
 function buildFaseCards(jogosMM) {
   const cont = document.getElementById('faseCards');
+  const agora = Date.now();
+  const regs = [];
   cont.innerHTML = FASE_CARDS.map(fc => {
-    const jogos = jogosMM.filter(j => fc.fases.indexOf(j.fase) >= 0);
-    let status, cls;
+    const jogos = jogosMM.filter(j => fc.fases.indexOf(String(j.fase)) >= 0);
+    const abertos = jogos.filter(j => agora < prazoLimite(j));
+    const temTimes = jogos.some(j => j.time1 && j.time2);
+    let status, cls, label = null, deadline = null;
     if (!jogos.length) { status = 'Aguardando'; cls = 'espera'; }
-    else if (jogos.some(j => Date.now() < prazoLimite(j))) { status = 'Aberto'; cls = 'aberto'; }
-    else { status = 'Encerrado'; cls = 'fechado'; }
-    const href = jogos.length ? `palpites.html?fase=${fc.key}` : 'palpites.html';
+    else if (!abertos.length) { status = 'Encerrado'; cls = 'fechado'; }
+    else if (temTimes) { status = 'Aberto'; cls = 'aberto'; label = '⏳ Fecha em'; deadline = Math.min.apply(null, abertos.map(prazoLimite)); }
+    else { status = 'Aguardando'; cls = 'espera'; label = '🗓️ Começa em'; deadline = Math.min.apply(null, abertos.map(prazoLimite)); }
+    const cdId = 'cd_' + fc.key;
+    regs.push({ id: cdId, label, deadline, fechado: jogos.length && !abertos.length });
+    const href = temTimes ? `palpites.html?fase=${fc.key}` : 'palpites.html';
     return `<a class="camada-card" href="${href}">
       <div class="cc-top">
         <span class="cc-emoji">${fc.emoji}</span>
@@ -187,9 +203,42 @@ function buildFaseCards(jogosMM) {
         <span class="cc-status ${cls}">${status}</span>
       </div>
       <div class="cc-desc">${fc.pts} + placar (15/10/7,5/5). Trava por jogo, 5 min antes do apito.</div>
+      <div class="cc-timer" id="${cdId}"></div>
     </a>`;
   }).join('');
+  regs.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (!el) return;
+    if (r.deadline) regTimer(r.id, r.deadline, r.label);
+    else if (r.fechado) setTimerFechado(r.id);
+    else { el.className = 'cc-timer'; el.innerHTML = '🕓 Aguardando definição dos confrontos'; }
+  });
 }
+
+// ── Cronômetros (contagem regressiva ao vivo) ───────────────
+const TIMERS = {}; // id -> { deadline, label }
+function regTimer(id, deadline, label) { if (deadline) TIMERS[id] = { deadline, label }; }
+function setTimerFechado(id) { const el = document.getElementById(id); if (el) { el.className = 'cc-timer encerrado'; el.innerHTML = '🔒 Palpites encerrados'; } }
+function fmtCountdown(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const p = n => String(n).padStart(2, '0');
+  if (d > 0) return d + 'd ' + p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
+  if (h > 0) return p(h) + 'h ' + p(m) + 'm ' + p(s) + 's';
+  return p(m) + 'm ' + p(s) + 's';
+}
+function tickTimers() {
+  const agora = Date.now();
+  Object.keys(TIMERS).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) { delete TIMERS[id]; return; }
+    const ms = TIMERS[id].deadline - agora;
+    if (ms <= 0) { delete TIMERS[id]; setTimerFechado(id); return; }
+    el.className = 'cc-timer' + (ms < 3600000 ? ' urgente' : '');
+    el.innerHTML = TIMERS[id].label + ' <strong>' + fmtCountdown(ms) + '</strong>';
+  });
+}
+setInterval(tickTimers, 1000);
 
 function setStatus(id, aberto, txt) {
   const el = document.getElementById(id);
