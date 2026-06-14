@@ -30,7 +30,7 @@ const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';   // ← defina no editor (NÃO
 // dos grupos automaticamente (mesmos IDs 1..72), evitando re-lançar placares.
 const V1_API_URL = 'https://script.google.com/macros/s/AKfycbyZEHNn7NmtJk1IMUfiKSVbpMcTie2ZrIG2cygqj6I_MhBWdZjtR8gJibIRL4AMn-FsRg/exec';
 
-const VALOR_INSCRICAO = 100;   // R$ — nova taxa da v2 (fase eliminatória)
+const VALOR_INSCRICAO = 50;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
 
 // Premiação (sobre o total arrecadado)

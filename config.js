@@ -5,7 +5,7 @@ const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbwQ_U7ylXlC0FhVL4iJvxx12H7BsOv7SgngcV91nhIotW_s0VLiDYb8zt6wy6asWdHK/exec',
   BOLAO_NOME: 'Bolão da Copa 2026',
   EDICAO: 'v2 · Fase Eliminatória',
-  VALOR_INSCRICAO: 100.00,
+  VALOR_INSCRICAO: 50.00,
   PIX_CHAVE: '76889726391',          // CPF sem pontos/traço
   PIX_NOME: 'Bolao Copa 2026',       // sem acentos, máx. 25 chars
   PIX_CIDADE: 'Tabuleiro do Norte',  // sem acentos, máx. 15 chars

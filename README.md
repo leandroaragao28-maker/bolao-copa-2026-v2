@@ -29,7 +29,7 @@ Sistema web do bolão da Copa 2026, **versão 2** — foca na **fase eliminatór
 | Arquivo | Função |
 |---|---|
 | `login.html` | Login por e-mail/senha + recuperação de senha (código por e-mail) |
-| `cadastro.html` | Cadastro com senha + pagamento Pix (R$ 100) |
+| `cadastro.html` | Cadastro com senha + pagamento Pix (R$ 50) |
 | `index.html` | Hub: atalhos das 3 camadas + prévia do ranking |
 | `classificacao-grupos.html` | **Camada 1** (1º/2º + 8 terceiros) |
 | `palpites.html` | **Mata-mata** (Camadas 2+3 juntas: placar → vencedor automático; empate → escolher) + gols da final |
