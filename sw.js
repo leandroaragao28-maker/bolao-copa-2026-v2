@@ -1,12 +1,12 @@
-/* Service Worker — Bolão da Copa 2026 v2 (PWA)
- * Estratégia:
- *   - App shell (mesma origem): stale-while-revalidate (abre rápido + offline).
+/* Service Worker â€” BolÃ£o da Copa 2026 v2 (PWA)
+ * EstratÃ©gia:
+ *   - App shell (mesma origem): stale-while-revalidate (abre rÃ¡pido + offline).
  *   - API do Apps Script: SEMPRE rede, nunca cacheia (dados sempre frescos).
- *   - CDN (twemoji): cache-first (bandeiras carregam rápido e ficam offline).
+ *   - CDN (twemoji): cache-first (bandeiras carregam rÃ¡pido e ficam offline).
  */
-// 'VERSION' é carimbado a cada deploy pelo deploy_Bolao-Copa-2026-v2.ps1
-// (muda o sw.js → o navegador detecta atualização → mostra o banner "Nova versão").
-const VERSION = 'v1';
+// 'VERSION' Ã© carimbado a cada deploy pelo deploy_Bolao-Copa-2026-v2.ps1
+// (muda o sw.js â†’ o navegador detecta atualizaÃ§Ã£o â†’ mostra o banner "Nova versÃ£o").
+const VERSION = '20260614132352';
 const CACHE = 'bolao-copa-' + VERSION;
 
 const SHELL = [
@@ -32,14 +32,14 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  // NÃO chama skipWaiting aqui: o novo SW fica "esperando" até o usuário
+  // NÃƒO chama skipWaiting aqui: o novo SW fica "esperando" atÃ© o usuÃ¡rio
   // tocar em "Atualizar" no banner (ver listener 'message' abaixo).
   e.waitUntil(
     caches.open(CACHE).then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
   );
 });
 
-// A página pede a troca imediata quando o usuário aceita atualizar.
+// A pÃ¡gina pede a troca imediata quando o usuÃ¡rio aceita atualizar.
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
@@ -79,7 +79,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // CDNs estáticos (twemoji etc.): cache-first
+  // CDNs estÃ¡ticos (twemoji etc.): cache-first
   if (/jsdelivr|twemoji|cdnjs|unpkg|gstatic/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then((cached) => cached || fetch(req).then((res) => {

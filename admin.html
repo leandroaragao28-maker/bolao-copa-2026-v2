@@ -198,14 +198,13 @@ function renderPart() {
   div.innerHTML = lista.map(p => {
     const isPend = p.status !== 'APROVADO';
     const g = _cont.grupos[p.id] ? '✅' : '—';
-    const br = _cont.bracket[p.id] || 0;
     const mm = _cont.mataMata[p.id] || 0;
     return `<div style="border:2px solid ${isPend ? '#FFCC80' : 'var(--azul-palido)'};border-radius:var(--radius-sm);padding:.8rem;margin-bottom:.6rem;">
       <div style="display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.5rem;">
         <div style="flex:1;min-width:0;">
           <div style="font-weight:800;font-size:.9rem;">${p.nome}</div>
           <div style="font-size:.72rem;color:var(--cinza-sub);">${p.email} · ${p.whatsapp}</div>
-          <div style="font-size:.68rem;color:var(--cinza-sub);margin-top:.2rem;">C1 grupos ${g} · C2 bracket ${br} · C3 placares ${mm} · gols final: ${p.golsFinalPalpite !== '' && p.golsFinalPalpite != null ? p.golsFinalPalpite : '—'}</div>
+          <div style="font-size:.68rem;color:var(--cinza-sub);margin-top:.2rem;">C1 grupos ${g} · C3 placares ${mm} · gols final: ${p.golsFinalPalpite !== '' && p.golsFinalPalpite != null ? p.golsFinalPalpite : '—'}</div>
         </div>
         <span class="badge badge-${p.status.toLowerCase()}">${p.status}</span>
       </div>
