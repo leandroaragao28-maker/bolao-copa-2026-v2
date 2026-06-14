@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>Comprovante de Palpites</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+  <style>
+    .comp-actions { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .comp-actions button { flex: 1; min-width: 120px; border: none; border-radius: 10px; padding: .7rem .5rem; font-weight: 800; font-size: .82rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
+    .ca-print { background: var(--azul); color: #fff; }
+    .ca-copy { background: var(--branco); color: var(--azul); border: 2px solid var(--azul-palido) !important; }
+    .ca-png { background: var(--ouro); color: #4E342E; }
+
+    .comp-card { background: #fff; border-radius: var(--radius); box-shadow: var(--sombra); overflow: hidden; }
+    .comp-head { background: linear-gradient(135deg,#1A237E,#283593); color: #fff; padding: 1.1rem 1.2rem; position: relative; }
+    .comp-head .ch-trofeu { position: absolute; right: .6rem; top: .2rem; font-size: 4.5rem; opacity: .12; }
+    .comp-head .ch-edicao { font-size: .64rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .8; }
+    .comp-head .ch-tit { font-size: 1.25rem; font-weight: 900; letter-spacing: -.02em; margin-top: .15rem; }
+    .comp-head .ch-sub { font-size: .78rem; opacity: .9; }
+    .comp-meta { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem .8rem; padding: .9rem 1.2rem; border-bottom: 1px dashed var(--cinza-borda); font-size: .78rem; }
+    .comp-meta .cm-row { display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; }
+    .comp-meta .cm-k { color: var(--cinza-sub); font-weight: 700; }
+    .comp-meta .cm-v { font-weight: 800; color: var(--cinza-texto); text-align: right; }
+    .comp-meta .cm-proto .cm-v { font-family: ui-monospace, "Courier New", monospace; letter-spacing: .05em; color: var(--azul); }
+
+    .comp-sec { padding: .9rem 1.2rem; border-bottom: 1px dashed var(--cinza-borda); }
+    .comp-sec:last-of-type { border-bottom: none; }
+    .cs-tit { font-size: .72rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--azul); margin-bottom: .6rem; display: flex; align-items: center; gap: .35rem; }
+    .cs-status { margin-left: auto; font-size: .62rem; font-weight: 800; padding: .12rem .5rem; border-radius: 20px; letter-spacing: 0; text-transform: none; }
+    .cs-status.ab { background: #E8F5E9; color: #1B5E20; }
+    .cs-status.fe { background: #FFEBEE; color: var(--vermelho); }
+
+    .cg-row { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--cinza-fundo); font-size: .82rem; }
+    .cg-row:last-child { border-bottom: none; }
+    .cg-g { width: 1.5rem; height: 1.5rem; flex-shrink: 0; background: var(--azul-fundo); color: var(--azul); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: .8rem; }
+    .cg-pick { display: flex; gap: .6rem; flex: 1; flex-wrap: wrap; }
+    .cg-slot { display: inline-flex; align-items: center; gap: .25rem; }
+    .cg-slot .pn { font-size: .62rem; font-weight: 800; color: var(--cinza-sub); }
+    .cg-slot .bd { font-size: 1rem; }
+    .cg-vazio { color: var(--cinza-sub); font-weight: 600; }
+    .terc-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+    .terc-chip { display: inline-flex; align-items: center; gap: .3rem; background: var(--ouro-claro); border: 1px solid var(--ouro); border-radius: 20px; padding: .2rem .55rem; font-size: .76rem; font-weight: 700; }
+    .terc-chip .bd { font-size: .95rem; }
+
+    .mm-row { display: flex; align-items: center; gap: .4rem; padding: .35rem 0; border-bottom: 1px solid var(--cinza-fundo); font-size: .8rem; flex-wrap: wrap; }
+    .mm-row:last-child { border-bottom: none; }
+    .mm-fase { font-size: .6rem; font-weight: 800; color: var(--cinza-sub); background: var(--cinza-fundo); border-radius: 5px; padding: .05rem .35rem; }
+    .mm-placar { font-weight: 900; color: var(--azul); }
+    .mm-av { font-size: .72rem; color: var(--verde); font-weight: 800; }
+    .comp-foot { padding: .8rem 1.2rem; font-size: .68rem; color: var(--cinza-sub); line-height: 1.5; background: var(--cinza-fundo); }
+    .gols-final { font-weight: 800; }
+    .gols-final b { color: var(--azul); }
+
+    @media print {
+      header, .bottom-nav, .comp-actions, nav { display: none !important; }
+      body { background: #fff; }
+      .container { padding: .3rem; max-width: 100%; }
+      .comp-card { box-shadow: none; border: 1px solid #bbb; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📄</span>
+  <div class="header-texto"><h1>Comprovante</h1><p>Recibo dos seus palpites</p></div>
+  <nav>
+    <a href="index.html">Início</a>
+    <a href="jogos.html">Jogos</a>
+    <a href="ranking.html">Ranking</a>
+    <a href="minha-pontuacao.html">Pontuação</a>
+    <a href="regulamento.html">Regras</a>
+    <a onclick="logout()" style="cursor:pointer;">Sair</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="comp-actions">
+    <button class="ca-print" onclick="imprimir()">🖨️ Imprimir / PDF</button>
+    <button class="ca-copy" onclick="copiar()">📋 Copiar resumo</button>
+    <button class="ca-png" id="btnPng" onclick="baixarPNG()">📥 Baixar imagem</button>
+  </div>
+
+  <div id="comprovante" class="comp-card"><div class="vazio" style="padding:2rem;">Carregando…</div></div>
+
+  <div style="height:1.5rem;"></div>
+</div>
+
+<script>
+let perfil = null;
+let GRUPOS = {};
+let dadosGrupos = { grupos: {}, terceiros: [] };
+let c1Encerrada = false;
+let palpMM = [];
+let golsFinal = '';
+let mapJogosMM = {};
+let textoResumo = '';
+let protocoloCod = '';
+
+async function init() {
+  perfil = await exigirLogin();
+  if (!perfil) return;
+
+  const [rg, rmmP, rj, rmmJ] = await Promise.all([
+    api({ action: 'getPalpiteGrupos', token: getToken() }),
+    api({ action: 'getMeusPalpitesMataMata', token: getToken() }),
+    api({ action: 'getJogos' }),
+    api({ action: 'getJogosMataMata' })
+  ]);
+
+  if (rj.ok) rj.jogos.forEach(j => {
+    if (!GRUPOS[j.grupo]) GRUPOS[j.grupo] = [];
+    [j.time1, j.time2].forEach(t => { if (GRUPOS[j.grupo].indexOf(t) < 0) GRUPOS[j.grupo].push(t); });
+  });
+  if (rg.ok && rg.dados) { dadosGrupos = { grupos: rg.dados.grupos || {}, terceiros: rg.dados.terceiros || [] }; c1Encerrada = !!rg.encerrado; }
+  if (rmmP.ok) { palpMM = rmmP.palpites || []; golsFinal = (rmmP.golsFinalPalpite ?? '') === '' ? '' : rmmP.golsFinalPalpite; }
+  if (rmmJ.ok) (rmmJ.jogos || []).forEach(j => mapJogosMM[String(j.id)] = j);
+
+  protocoloCod = protocolo();
+  render();
+}
+
+// Protocolo estável: depende só do conteúdo dos palpites (mesmos palpites → mesmo código).
+function protocolo() {
+  const canon = JSON.stringify({
+    id: perfil.id,
+    g: dadosGrupos.grupos,
+    t: dadosGrupos.terceiros.slice().sort(),
+    m: palpMM.map(p => p.jogoId + ':' + p.gols1 + 'x' + p.gols2 + '>' + (p.vencedor || '')).sort(),
+    f: golsFinal
+  });
+  let h1 = 5381, h2 = 52711;
+  for (let i = 0; i < canon.length; i++) { const c = canon.charCodeAt(i); h1 = ((h1 << 5) + h1 + c) >>> 0; h2 = ((h2 << 5) + h2 + (canon.charCodeAt(canon.length - 1 - i))) >>> 0; }
+  const hex = (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).toUpperCase();
+  return hex.slice(0, 4) + '-' + hex.slice(4, 8) + '-' + hex.slice(8, 12);
+}
+
+function agoraStr() {
+  return new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function render() {
+  const gruposOrd = Object.keys(dadosGrupos.grupos).sort();
+  const completos = gruposOrd.filter(g => { const e = dadosGrupos.grupos[g]; return e && e.pos1 && e.pos2; }).length;
+  const terc = dadosGrupos.terceiros || [];
+
+  // Seção grupos
+  let gHtml = '';
+  if (!gruposOrd.length) {
+    gHtml = '<div class="cg-vazio" style="padding:.3rem 0;">Nenhum palpite de grupos salvo ainda.</div>';
+  } else {
+    gHtml = gruposOrd.map(g => {
+      const e = dadosGrupos.grupos[g] || {};
+      const slot = (sig, n) => sig
+        ? `<span class="cg-slot"><span class="pn">${n}</span><span class="bd">${bandeira(sig)}</span>${nomeTime(sig)}</span>`
+        : `<span class="cg-slot cg-vazio"><span class="pn">${n}</span>—</span>`;
+      return `<div class="cg-row"><span class="cg-g">${g}</span><div class="cg-pick">${slot(e.pos1, '1º')}${slot(e.pos2, '2º')}</div></div>`;
+    }).join('');
+  }
+  let tercHtml = '';
+  if (terc.length) {
+    tercHtml = `<div class="terc-chips">${terc.map(t => `<span class="terc-chip"><span class="bd">${bandeira(t)}</span>${nomeTime(t)}</span>`).join('')}</div>`;
+  }
+
+  // Seção mata-mata
+  let mmHtml = '';
+  if (!palpMM.length) {
+    mmHtml = '<div class="cg-vazio" style="padding:.3rem 0;">Sem palpites de mata-mata (os confrontos ainda não foram definidos).</div>';
+  } else {
+    const ordem = { '32': 1, 'oitavas': 2, 'quartas': 3, 'semis': 4, '3lugar': 5, 'final': 6 };
+    mmHtml = palpMM.slice().sort((a, b) => {
+      const ja = mapJogosMM[String(a.jogoId)] || {}, jb = mapJogosMM[String(b.jogoId)] || {};
+      return (ordem[ja.fase] || 9) - (ordem[jb.fase] || 9);
+    }).map(p => {
+      const j = mapJogosMM[String(p.jogoId)];
+      const faseLbl = j && FASES_INFO[String(j.fase)] ? FASES_INFO[String(j.fase)].curto : 'Jogo ' + p.jogoId;
+      const conf = j
+        ? `<span class="bd">${bandeira(j.time1)}</span>${j.time1} <span class="mm-placar">${p.gols1}×${p.gols2}</span> ${j.time2}<span class="bd">${bandeira(j.time2)}</span>`
+        : `<span class="mm-placar">${p.gols1}×${p.gols2}</span>`;
+      const av = p.vencedor ? `<span class="mm-av">→ ${nomeTime(p.vencedor)}</span>` : '';
+      return `<div class="mm-row"><span class="mm-fase">${faseLbl}</span> ${conf} ${av}</div>`;
+    }).join('');
+  }
+  const golsHtml = golsFinal !== '' ? `<div class="mm-row gols-final" style="border-top:1px solid var(--cinza-fundo);">🎯 Total de gols da FINAL (desempate): <b>${golsFinal}</b></div>` : '';
+
+  document.getElementById('comprovante').innerHTML = `
+    <div class="comp-head">
+      <span class="ch-trofeu">🏆</span>
+      <div class="ch-edicao">Bolão da Copa 2026 · v2</div>
+      <div class="ch-tit">Comprovante de Palpites</div>
+      <div class="ch-sub">Recibo dos palpites registrados no sistema</div>
+    </div>
+    <div class="comp-meta">
+      <div class="cm-row"><span class="cm-k">Participante</span><span class="cm-v">${perfil.nome}</span></div>
+      <div class="cm-row"><span class="cm-k">Código</span><span class="cm-v">${perfil.id}</span></div>
+      <div class="cm-row"><span class="cm-k">Status</span><span class="cm-v">${perfil.status === 'APROVADO' ? '✅ Aprovado' : '⏳ Pendente'}</span></div>
+      <div class="cm-row"><span class="cm-k">Gerado em</span><span class="cm-v">${agoraStr()}</span></div>
+      <div class="cm-row cm-proto" style="grid-column:1 / -1;"><span class="cm-k">Protocolo</span><span class="cm-v">${protocoloCod}</span></div>
+    </div>
+
+    <div class="comp-sec">
+      <div class="cs-tit">📊 Classificação dos grupos
+        <span class="cs-status ${c1Encerrada ? 'fe' : 'ab'}">${c1Encerrada ? '🔒 Encerrado' : 'Editável até 24/06 15:55'}</span>
+      </div>
+      ${gHtml}
+      ${terc.length ? `<div class="cs-tit" style="margin-top:.7rem;font-size:.66rem;">🥉 8 melhores terceiros (${terc.length}/8)</div>${tercHtml}` : ''}
+      <div style="font-size:.66rem;color:var(--cinza-sub);margin-top:.5rem;">${completos}/12 grupos preenchidos.</div>
+    </div>
+
+    <div class="comp-sec">
+      <div class="cs-tit">🏟️ Mata-mata <span class="cs-status ab">por jogo · 5 min antes do apito</span></div>
+      ${mmHtml}
+      ${golsHtml}
+    </div>
+
+    <div class="comp-foot">
+      Este comprovante reflete os palpites salvos no sistema até a data/hora indicada. Cada fase tem sua própria trava
+      (grupos: 24/06 15:55 · mata-mata: 5 min antes de cada jogo). O protocolo identifica este conjunto de palpites —
+      se você alterar um palpite, gere um novo comprovante.
+    </div>`;
+
+  aplicarTwemoji(document.getElementById('comprovante'));
+  montarTexto(gruposOrd, terc);
+}
+
+function montarTexto(gruposOrd, terc) {
+  let t = '🏆 BOLÃO DA COPA 2026 — COMPROVANTE DE PALPITES\n';
+  t += `Participante: ${perfil.nome} (${perfil.id})\n`;
+  t += `Gerado em: ${agoraStr()}\nProtocolo: ${protocoloCod}\n`;
+  t += '\n📊 CLASSIFICAÇÃO DOS GRUPOS\n';
+  if (!gruposOrd.length) t += '  (nenhum palpite salvo)\n';
+  gruposOrd.forEach(g => {
+    const e = dadosGrupos.grupos[g] || {};
+    t += `  Grupo ${g}: 1º ${e.pos1 ? nomeTime(e.pos1) : '—'} · 2º ${e.pos2 ? nomeTime(e.pos2) : '—'}\n`;
+  });
+  if (terc.length) t += `  🥉 Terceiros (${terc.length}/8): ${terc.map(nomeTime).join(', ')}\n`;
+  if (palpMM.length) {
+    t += '\n🏟️ MATA-MATA\n';
+    palpMM.forEach(p => {
+      const j = mapJogosMM[String(p.jogoId)];
+      const conf = j ? `${j.time1} ${p.gols1}×${p.gols2} ${j.time2}` : `Jogo ${p.jogoId}: ${p.gols1}×${p.gols2}`;
+      t += `  ${conf}${p.vencedor ? ' → ' + nomeTime(p.vencedor) : ''}\n`;
+    });
+  }
+  if (golsFinal !== '') t += `\n🎯 Gols da final (desempate): ${golsFinal}\n`;
+  textoResumo = t;
+}
+
+function imprimir() { window.print(); }
+
+async function copiar() {
+  try {
+    await navigator.clipboard.writeText(textoResumo);
+    toast('Resumo copiado! Cole no WhatsApp. 📋', 'ok');
+  } catch (e) {
+    toast('Não consegui copiar. Use Imprimir/PDF.', 'aviso');
+  }
+}
+
+async function baixarPNG() {
+  if (!window.html2canvas) { toast('Gerador de imagem indisponível — use Imprimir/PDF.', 'aviso'); return; }
+  const btn = document.getElementById('btnPng');
+  btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Gerando…';
+  try {
+    const canvas = await window.html2canvas(document.getElementById('comprovante'), { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const link = document.createElement('a');
+    link.download = 'comprovante-bolao-' + perfil.id + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('Imagem baixada! 📥', 'ok');
+  } catch (e) {
+    toast('Não consegui gerar a imagem. Use Imprimir/PDF.', 'aviso');
+  } finally { btn.disabled = false; btn.textContent = txt; }
+}
+
+window.onload = init;
+</script>
+
+<nav class="bottom-nav">
+  <a href="index.html"><span class="bnav-icon">🏠</span>Início</a>
+  <a href="jogos.html"><span class="bnav-icon">📅</span>Jogos</a>
+  <a href="ranking.html"><span class="bnav-icon">🏆</span>Ranking</a>
+  <a href="minha-pontuacao.html"><span class="bnav-icon">📊</span>Pontuação</a>
+  <a href="regulamento.html"><span class="bnav-icon">📋</span>Regras</a>
+</nav>
+</body>
+</html>

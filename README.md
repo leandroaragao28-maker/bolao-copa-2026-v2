@@ -14,7 +14,7 @@ Sistema web do bolão da Copa 2026, **versão 2** — foca na **fase eliminatór
 
 | Camada | O que prevê | Trava | Pontos |
 |---|---|---|---|
-| **1 — Classificação dos grupos** | 1º/2º de cada grupo + 8 melhores terceiros | Antes da 3ª rodada (≈23/jun) | 5 (1º exato), 5 (2º exato), 3 (avança c/ posição errada), 2 (terceiro certo) |
+| **1 — Classificação dos grupos** | 1º/2º de cada grupo + 8 melhores terceiros | Antes da 3ª rodada (24/06 15:55) | 5 (1º exato), 5 (2º exato), 3 (avança c/ posição errada), 2 (terceiro certo) |
 | **2 — Quem avança** | Vencedor de cada jogo do mata-mata (sai do placar; empate = você escolhe) | Por jogo (5 min antes do apito) | 2 / 4 / 6 / 10 / 15 (campeão) |
 | **3 — Placares do mata-mata** | Placar de cada jogo eliminatório | Por jogo (5 min antes do apito) | 15 / 10 / 7,5 / 5 |
 

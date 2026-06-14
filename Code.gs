@@ -458,7 +458,7 @@ function redefinirSenha(body) {
 function salvarPalpiteGrupos(body) {
   const r = _linhaPorToken(body.token);
   if (!r) return { ok: false, msg: 'Sessão expirada.' };
-  if (camada1Encerrada()) return { ok: false, msg: 'Os palpites da fase de grupos já estão encerrados (trava 23/jun).' };
+  if (camada1Encerrada()) return { ok: false, msg: 'Os palpites da fase de grupos já estão encerrados (trava 24/06 15:55).' };
   const dados = body.dados;
   if (!dados || !dados.grupos) return { ok: false, msg: 'Dados inválidos.' };
 

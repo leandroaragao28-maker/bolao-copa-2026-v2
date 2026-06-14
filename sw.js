@@ -16,6 +16,7 @@ const SHELL = [
   './cadastro.html',
   './classificacao-grupos.html',
   './palpites.html',
+  './comprovante.html',
   './jogos.html',
   './ranking.html',
   './minha-pontuacao.html',
