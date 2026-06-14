@@ -47,6 +47,22 @@
     .mm-c { text-align:center; min-width:54px; }
     .mm-c .h { font-size:.62rem; color:var(--cinza-sub); }
     .mm-c .p { font-weight:900; color:var(--azul); }
+    /* Chaveamento em árvore */
+    .bracket-scroll { overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--cinza-borda); border-radius:12px; background:#fff; padding:.4rem .2rem; }
+    .bk { display:flex; align-items:stretch; width:max-content; position:relative; }
+    .bk-round { display:flex; flex-direction:column; min-width:118px; }
+    .bk-h { font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:#7B1FA2; text-align:center; margin-bottom:.3rem; }
+    .bk-body { flex:1; display:flex; flex-direction:column; justify-content:space-around; }
+    .bk-match { background:#fff; border:1.5px solid var(--cinza-borda); border-radius:7px; overflow:hidden; position:relative; margin:.22rem .5rem; z-index:1; }
+    .bk-date { font-size:.55rem; color:var(--cinza-sub); text-align:center; padding:.1rem .2rem; background:#F6F8FC; border-bottom:1px solid #EEF1F6; font-weight:700; white-space:nowrap; }
+    .bk-team { display:flex; align-items:center; gap:.3rem; padding:.22rem .4rem; font-size:.72rem; font-weight:700; line-height:1.1; }
+    .bk-team + .bk-team { border-top:1px solid #EEF1F6; }
+    .bk-team .bd { font-size:.95rem; flex-shrink:0; }
+    .bk-team .ph { color:var(--cinza-sub); font-weight:600; font-size:.64rem; }
+    .bk-team.win { background:#E8F5E9; color:#1B5E20; }
+    .bk-team.lose { color:var(--cinza-sub); }
+    .bk-team .sc { margin-left:auto; font-weight:900; padding-left:.3rem; }
+    .bk-3 { max-width:240px; }
   </style>
 </head>
 <body>
@@ -81,22 +97,24 @@
 </div>
 
 <script>
-let JOGOS = [], JOGOS_MM = [], RESULTADOS = {}, RESULTADOS_MM = {};
+let JOGOS = [], JOGOS_MM = [], RESULTADOS = {}, RESULTADOS_MM = {}, CHAVE = [];
 let GRUPOS = {}, grupoAtivo = 'A';
 let refreshInterval = null, timerInterval = null;
 
 async function init() {
   await exigirLogin();
-  const [rj, rmm, rr, rrmm] = await Promise.all([
+  const [rj, rmm, rr, rrmm, rch] = await Promise.all([
     api({ action: 'getJogos' }),
     api({ action: 'getJogosMataMata' }),
     api({ action: 'getResultadosPublico' }),
-    api({ action: 'getResultadosMataMataPublico' })
+    api({ action: 'getResultadosMataMataPublico' }),
+    api({ action: 'getChaveamento' })
   ]);
   if (rj.ok) JOGOS = rj.jogos;
   if (rmm.ok) { JOGOS_MM = normJogosMM(rmm.jogos); RESULTADOS_MM = rmm.resultados || {}; }
   if (rr.ok) RESULTADOS = rr.resultados || {};
   if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || RESULTADOS_MM;
+  if (rch.ok) CHAVE = rch.jogos || [];
 
   construirGrupos();
   if (!GRUPOS[grupoAtivo]) grupoAtivo = Object.keys(GRUPOS).sort()[0] || 'A';
@@ -152,29 +170,72 @@ function cardJogo(j, destaque) {
     </div>${rodape}</div>`;
 }
 
+// Ordem de árvore (top→bottom) por fase, para alinhar o bracket
+const BK_ORDER = {
+  '32':      [74,77,73,75,83,84,81,82,76,78,79,80,86,88,85,87],
+  'oitavas': [89,90,93,94,91,92,95,96],
+  'quartas': [97,98,99,100],
+  'semis':   [101,102],
+  'final':   [104]
+};
+const BK_HEAD = { '32':'Rodada de 32', oitavas:'Oitavas', quartas:'Quartas', semis:'Semis', final:'Final' };
+
+function bkTeam(j, which) {
+  const sigla = which === 1 ? j.time1 : j.time2;
+  const slot  = which === 1 ? j.slot1 : j.slot2;
+  if (!sigla) return `<div class="bk-team"><span class="ph">${slot}</span></div>`;
+  const cls = j.vencedor ? (sigla === j.vencedor ? 'win' : 'lose') : '';
+  const sc  = (j.gols1 != null) ? `<span class="sc">${which === 1 ? j.gols1 : j.gols2}</span>` : '';
+  return `<div class="bk-team ${cls}"><span class="bd">${bandeira(sigla)}</span>${sigla}${sc}</div>`;
+}
+function bkMatch(j) {
+  if (!j) return '';
+  return `<div class="bk-match"><div class="bk-date">${fmtDiaMes(j.data)} · ${j.hora}</div>${bkTeam(j,1)}${bkTeam(j,2)}</div>`;
+}
+
 function renderBracket() {
   const cont = document.getElementById('bracket');
-  if (!JOGOS_MM.length) { cont.innerHTML = '<div class="vazio">Os confrontos do mata-mata aparecem aqui conforme as fases saem.</div>'; return; }
-  const porFase = {};
-  JOGOS_MM.forEach(j => { (porFase[j.fase] = porFase[j.fase] || []).push(j); });
-  let html = '';
-  FASES_ORDEM.forEach(fase => {
-    const lista = porFase[fase];
-    if (!lista || !lista.length) return;
-    html += `<div class="mm-fase">${FASES_INFO[fase].label}</div>`;
-    lista.forEach(j => {
-      const r = RESULTADOS_MM[j.id];
-      const venc = r ? r.vencedor : null;
-      html += `<div class="mm-jogo">
-        <div class="mt ${venc === j.time1 ? 'venceu' : ''}"><span class="bd">${bandeira(j.time1)}</span><span>${nomeTime(j.time1)}</span></div>
-        <div class="mm-c">${r ? `<div class="p">${r.gols1}×${r.gols2}</div>` : `<div class="h">${fmtDiaMes(j.data)}</div><div class="h">${j.hora}</div>`}</div>
-        <div class="mt r ${venc === j.time2 ? 'venceu' : ''}"><span>${nomeTime(j.time2)}</span><span class="bd">${bandeira(j.time2)}</span></div>
-      </div>`;
-    });
+  if (!CHAVE.length) { cont.innerHTML = '<div class="vazio">Os confrontos do mata-mata aparecem aqui conforme as fases saem.</div>'; return; }
+  const byN = {}; CHAVE.forEach(j => byN[j.n] = j);
+  let cols = '';
+  Object.keys(BK_ORDER).forEach(fase => {
+    cols += `<div class="bk-round f-${fase}"><div class="bk-h">${BK_HEAD[fase]}</div><div class="bk-body">` +
+      BK_ORDER[fase].map(n => bkMatch(byN[n])).join('') + `</div></div>`;
   });
-  cont.innerHTML = html;
+  const j3 = byN[103];
+  const tres = j3 ? `<div class="mm-fase" style="margin-top:1rem;">Disputa de 3º lugar</div><div class="bk-3">${bkMatch(j3)}</div>` : '';
+  cont.innerHTML = `<div class="bracket-scroll"><div class="bk" id="bkTree">${cols}</div></div>${tres}`;
   aplicarTwemoji(cont);
+  requestAnimationFrame(() => requestAnimationFrame(drawBracketConnectors));
+  setTimeout(drawBracketConnectors, 500);
 }
+
+function drawBracketConnectors() {
+  const bk = document.getElementById('bkTree');
+  if (!bk) return;
+  const old = bk.querySelector('svg.conn'); if (old) old.remove();
+  const br = bk.getBoundingClientRect();
+  const rounds = Object.keys(BK_ORDER).map(f => Array.from(bk.querySelectorAll('.f-' + f + ' .bk-match')));
+  const pt = (el, side) => { const r = el.getBoundingClientRect(); return { x:(side === 'r' ? r.right : r.left) - br.left, y:r.top + r.height/2 - br.top }; };
+  let d = '';
+  for (let ri = 0; ri < rounds.length - 1; ri++) {
+    const cur = rounds[ri], nxt = rounds[ri + 1];
+    for (let i = 0; i < nxt.length; i++) {
+      if (!cur[2*i] || !cur[2*i+1] || !nxt[i]) continue;
+      const a = pt(cur[2*i],'r'), b = pt(cur[2*i+1],'r'), p = pt(nxt[i],'l');
+      const mx = ((a.x > b.x ? a.x : b.x) + p.x) / 2;
+      d += `M${a.x} ${a.y}H${mx}M${b.x} ${b.y}H${mx}M${mx} ${a.y}V${b.y}M${mx} ${p.y}H${p.x}`;
+    }
+  }
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'conn'); svg.setAttribute('width', bk.scrollWidth); svg.setAttribute('height', bk.scrollHeight);
+  svg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:0;';
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d); path.setAttribute('stroke', '#9FA8DA'); path.setAttribute('stroke-width', '2'); path.setAttribute('fill', 'none');
+  svg.appendChild(path); bk.insertBefore(svg, bk.firstChild);
+}
+window.addEventListener('resize', drawBracketConnectors);
 
 // ── FIFA ordering (igual à v1) ──
 function calcStats(codes, jogosG) {
@@ -240,14 +301,16 @@ function iniciarAutoRefresh() {
   refreshInterval = setInterval(async () => {
     if (document.hidden) return;
     try {
-      const [rr, rrmm, rmm] = await Promise.all([
+      const [rr, rrmm, rmm, rch] = await Promise.all([
         apiSilent({ action: 'getResultadosPublico' }),
         apiSilent({ action: 'getResultadosMataMataPublico' }),
-        apiSilent({ action: 'getJogosMataMata' })
+        apiSilent({ action: 'getJogosMataMata' }),
+        apiSilent({ action: 'getChaveamento' })
       ]);
       if (rr.ok) RESULTADOS = rr.resultados || {};
       if (rrmm.ok) RESULTADOS_MM = rrmm.resultados || {};
       if (rmm.ok) JOGOS_MM = normJogosMM(rmm.jogos);
+      if (rch.ok) CHAVE = rch.jogos || [];
       renderProximos(); renderBracket(); renderTabela(); atualizarTimers();
     } catch (e) {}
   }, 60000);

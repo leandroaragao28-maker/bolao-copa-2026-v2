@@ -281,6 +281,7 @@ function doPost(e) {
     // ── Jogos / resultados (público) ──
     else if (a === 'getJogos')                 resultado = { ok: true, jogos: JOGOS, travaCamada1: getTravaCamada1() };
     else if (a === 'getJogosMataMata')         resultado = getJogosMataMata();
+    else if (a === 'getChaveamento')           resultado = getChaveamento();
     else if (a === 'getResultadosPublico')     resultado = getResultadosPublico();
     else if (a === 'getResultadosMataMataPublico') resultado = getResultadosMataMataPublico();
     else if (a === 'getClassificacaoReal')     resultado = { ok: true, classificacao: calcularClassificacaoReal() };
@@ -582,16 +583,10 @@ function _resolverLadoBase(lado, classif, thirds) {
   return ''; // V / L resolvidos depois
 }
 
-// Motor idempotente: cria/atualiza os jogos cujos DOIS times já são conhecidos.
-function atualizarChaveamento() {
-  const classif = calcularClassificacaoReal();
-  const mapResMM = _mapResultadosMataMata();
-  const thirds = _getTerceiros();
-
+// Resolve os times de cada jogo do BRACKET (W/R/3 da classificação + V/L dos resultados).
+function _resolverBracketTeams(classif, mapResMM, thirds) {
   const teamsByN = {};
   BRACKET.forEach(b => { teamsByN[b.n] = { t1: _resolverLadoBase(b.l1, classif, thirds), t2: _resolverLadoBase(b.l2, classif, thirds) }; });
-
-  // Passos iterativos para V (vencedor) e L (perdedor) de jogos anteriores
   for (let pass = 0; pass < 6; pass++) {
     BRACKET.forEach(b => {
       [['l1', 't1'], ['l2', 't2']].forEach(par => {
@@ -604,6 +599,41 @@ function atualizarChaveamento() {
       });
     });
   }
+  return teamsByN;
+}
+
+// Público: estrutura completa do chaveamento (para a árvore na tela Jogos).
+function _rotuloSlot(lado) {
+  if (lado.t === 'W') return '1º ' + lado.g;
+  if (lado.t === 'R') return '2º ' + lado.g;
+  if (lado.t === '3') return 'Melhor 3º';
+  if (lado.t === 'V') return 'Venc. J' + lado.m;
+  if (lado.t === 'L') return 'Perd. J' + lado.m;
+  return '?';
+}
+function getChaveamento() {
+  const classif = calcularClassificacaoReal();
+  const mapResMM = _mapResultadosMataMata();
+  const teamsByN = _resolverBracketTeams(classif, mapResMM, _getTerceiros());
+  const jogos = BRACKET.map(b => {
+    const t = teamsByN[b.n] || {};
+    const res = mapResMM[_jogoIdK(b.n)];
+    return {
+      n: b.n, fase: b.fase, data: b.data, hora: b.hora,
+      slot1: _rotuloSlot(b.l1), slot2: _rotuloSlot(b.l2),
+      time1: t.t1 || '', time2: t.t2 || '',
+      gols1: res ? res.gols1 : null, gols2: res ? res.gols2 : null, vencedor: res ? res.vencedor : ''
+    };
+  });
+  return { ok: true, jogos };
+}
+
+// Motor idempotente: cria/atualiza os jogos cujos DOIS times já são conhecidos.
+function atualizarChaveamento() {
+  const classif = calcularClassificacaoReal();
+  const mapResMM = _mapResultadosMataMata();
+  const thirds = _getTerceiros();
+  const teamsByN = _resolverBracketTeams(classif, mapResMM, thirds);
 
   const aba = _aba('JogosMataMata', ['JogoID','Fase','Data','Hora','Time1','Time2','Ordem','DataCriacao']);
   const vals = aba.getDataRange().getValues();
