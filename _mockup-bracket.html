@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>MOCKUP · Chaveamento em árvore</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .mock-banner { background:var(--ouro-claro); border:2px solid var(--ouro); border-radius:10px; padding:.6rem .8rem; font-size:.82rem; color:#4E342E; margin-bottom:1rem; }
+    .sec-t { font-size:.78rem; font-weight:800; color:#7B1FA2; text-transform:uppercase; letter-spacing:.04em; margin:1rem 0 .5rem; }
+
+    /* exemplo de placeholders */
+    .ex { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.4rem; }
+    .ex .match { min-width:200px; }
+
+    /* Bracket */
+    .bracket-scroll { overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--cinza-borda); border-radius:12px; background:#fff; padding:.4rem .2rem; }
+    .bracket { display:flex; align-items:stretch; width:max-content; }
+    .round { display:flex; flex-direction:column; min-width:122px; }
+    .round-h { font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:#7B1FA2; text-align:center; margin-bottom:.3rem; }
+    .round-body { flex:1; display:flex; flex-direction:column; justify-content:space-around; }
+    .match { background:var(--branco); border:1.5px solid var(--cinza-borda); border-radius:7px; overflow:hidden; position:relative; margin:.22rem .55rem; }
+    .team { display:flex; align-items:center; gap:.3rem; padding:.22rem .4rem; font-size:.72rem; font-weight:700; line-height:1.1; }
+    .team + .team { border-top:1px solid #EEF1F6; }
+    .team .bd { font-size:.95rem; flex-shrink:0; }
+    .team .ph { color:var(--cinza-sub); font-weight:600; font-size:.64rem; }
+    .team.win { background:#E8F5E9; color:#1B5E20; }
+    .team.lose { color:var(--cinza-sub); }
+    .team .sc { margin-left:auto; font-weight:900; padding-left:.3rem; }
+    .round:not(.fin) .match::after { content:''; position:absolute; left:100%; top:50%; width:8px; height:2px; background:var(--azul-palido); }
+    .leg { display:flex; gap:1rem; flex-wrap:wrap; font-size:.66rem; font-weight:700; color:var(--cinza-sub); margin-top:.7rem; }
+    .leg i { width:.85rem; height:.85rem; border-radius:3px; display:inline-block; vertical-align:-2px; margin-right:.3rem; background:#E8F5E9; }
+  </style>
+</head>
+<body>
+<header>
+  <span class="logo">🗺️</span>
+  <div class="header-texto"><h1>MOCKUP · Chaveamento</h1><p>árvore do mata-mata</p></div>
+</header>
+
+<div class="container">
+  <div class="mock-banner">🔎 Chaveamento em <strong>árvore</strong>: arraste para os lados/baixo. Time conhecido = <strong>bandeira + sigla</strong>; ainda indefinido = <strong>"1º Grupo B"</strong> (antes dos grupos) ou <strong>"Venc. J##"</strong> (vencedor do jogo).</div>
+
+  <div class="sec-t">Antes dos grupos terminarem, cada vaga aparece assim:</div>
+  <div class="ex" id="ex"></div>
+
+  <div class="sec-t">Chaveamento completo</div>
+  <div class="bracket-scroll">
+    <div class="bracket" id="bracket"></div>
+  </div>
+  <div class="leg"><span><i></i>vencedor do confronto</span></div>
+</div>
+
+<script>
+function team(o) {
+  if (o.ph) return `<div class="team"><span class="ph">${o.ph}</span></div>`;
+  const cls = o.win ? 'win' : (o.lose ? 'lose' : '');
+  const sc = (o.sc != null) ? `<span class="sc">${o.sc}</span>` : '';
+  return `<div class="team ${cls}"><span class="bd">${bandeira(o.t)}</span>${o.t}${sc}</div>`;
+}
+function match(a, b) { return `<div class="match">${team(a)}${team(b)}</div>`; }
+
+// Exemplo de placeholders (antes dos grupos)
+document.getElementById('ex').innerHTML =
+  match({ph:'1º Grupo A'}, {ph:'2º Grupo B'}) +
+  match({ph:'1º Grupo E'}, {ph:'Melhor 3º'});
+
+// 32-avos JÁ disputados (bandeira + sigla + placar, vencedor em verde) — em ordem de árvore
+const R32 = [
+  [{t:'ALE',sc:2,win:1},{t:'TCH',sc:0,lose:1}], [{t:'FRA',sc:1,lose:1},{t:'BOS',sc:2,win:1}],
+  [{t:'AFS',sc:2,win:1},{t:'SUI',sc:1,lose:1}], [{t:'HOL',sc:3,win:1},{t:'MAR',sc:1,lose:1}],
+  [{t:'COL',sc:0,lose:1},{t:'CRO',sc:1,win:1}], [{t:'ESP',sc:2,win:1},{t:'AUT',sc:0,lose:1}],
+  [{t:'EUA',sc:1,win:1},{t:'CDM',sc:0,lose:1}], [{t:'BEL',sc:2,win:1},{t:'SUE',sc:1,lose:1}],
+  [{t:'BRA',sc:3,win:1},{t:'JAP',sc:1,lose:1}], [{t:'EQU',sc:0,lose:1},{t:'SEN',sc:2,win:1}],
+  [{t:'MEX',sc:2,win:1},{t:'HAI',sc:1,lose:1}], [{t:'ING',sc:4,win:1},{t:'AUS',sc:0,lose:1}],
+  [{t:'ARG',sc:2,win:1},{t:'URU',sc:1,lose:1}], [{t:'PAR',sc:0,lose:1},{t:'EGI',sc:1,win:1}],
+  [{t:'CAN',sc:1,win:1},{t:'NZE',sc:0,lose:1}], [{t:'POR',sc:3,win:1},{t:'CAB',sc:0,lose:1}],
+];
+// fases seguintes ainda não definidas -> "Venc. J##"
+const R16n = [[74,77],[73,75],[83,84],[81,82],[76,78],[79,80],[86,88],[85,87]];
+const QFn  = [[89,90],[93,94],[91,92],[95,96]];
+const SFn  = [[97,98],[99,100]];
+const FINn = [[101,102]];
+const vp = n => ({ph:'Venc. J'+n});
+
+function coluna(cls, header, jogos) {
+  return `<div class="round ${cls}"><div class="round-h">${header}</div><div class="round-body">` +
+    jogos.map(j => match(j[0], j[1])).join('') + `</div></div>`;
+}
+
+document.getElementById('bracket').innerHTML =
+  coluna('r32', 'Rodada de 32', R32) +
+  coluna('r16', 'Oitavas', R16n.map(p => [vp(p[0]), vp(p[1])])) +
+  coluna('qf',  'Quartas',  QFn.map(p => [vp(p[0]), vp(p[1])])) +
+  coluna('sf',  'Semis',    SFn.map(p => [vp(p[0]), vp(p[1])])) +
+  coluna('fin', 'Final',    FINn.map(p => [vp(p[0]), vp(p[1])]));
+
+aplicarTwemoji(document.body);
+</script>
+</body>
+</html>
