@@ -1,12 +1,12 @@
-/* Service Worker Ã¢â‚¬â€ BolÃƒÂ£o da Copa 2026 v2 (PWA)
- * EstratÃƒÂ©gia:
- *   - App shell (mesma origem): stale-while-revalidate (abre rÃƒÂ¡pido + offline).
+/* Service Worker ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â BolÃƒÆ’Ã‚Â£o da Copa 2026 v2 (PWA)
+ * EstratÃƒÆ’Ã‚Â©gia:
+ *   - App shell (mesma origem): stale-while-revalidate (abre rÃƒÆ’Ã‚Â¡pido + offline).
  *   - API do Apps Script: SEMPRE rede, nunca cacheia (dados sempre frescos).
- *   - CDN (twemoji): cache-first (bandeiras carregam rÃƒÂ¡pido e ficam offline).
+ *   - CDN (twemoji): cache-first (bandeiras carregam rÃƒÆ’Ã‚Â¡pido e ficam offline).
  */
-// 'VERSION' ÃƒÂ© carimbado a cada deploy pelo deploy_Bolao-Copa-2026-v2.ps1
-// (muda o sw.js Ã¢â€ â€™ o navegador detecta atualizaÃƒÂ§ÃƒÂ£o Ã¢â€ â€™ mostra o banner "Nova versÃƒÂ£o").
-const VERSION = '20260614183951';
+// 'VERSION' ÃƒÆ’Ã‚Â© carimbado a cada deploy pelo deploy_Bolao-Copa-2026-v2.ps1
+// (muda o sw.js ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ o navegador detecta atualizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ mostra o banner "Nova versÃƒÆ’Ã‚Â£o").
+const VERSION = '20260614193327';
 const CACHE = 'bolao-copa-' + VERSION;
 
 const SHELL = [
@@ -32,14 +32,14 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  // NÃƒÆ’O chama skipWaiting aqui: o novo SW fica "esperando" atÃƒÂ© o usuÃƒÂ¡rio
+  // NÃƒÆ’Ã†â€™O chama skipWaiting aqui: o novo SW fica "esperando" atÃƒÆ’Ã‚Â© o usuÃƒÆ’Ã‚Â¡rio
   // tocar em "Atualizar" no banner (ver listener 'message' abaixo).
   e.waitUntil(
     caches.open(CACHE).then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
   );
 });
 
-// A pÃƒÂ¡gina pede a troca imediata quando o usuÃƒÂ¡rio aceita atualizar.
+// A pÃƒÆ’Ã‚Â¡gina pede a troca imediata quando o usuÃƒÆ’Ã‚Â¡rio aceita atualizar.
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
@@ -79,7 +79,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // CDNs estÃƒÂ¡ticos (twemoji etc.): cache-first
+  // CDNs estÃƒÆ’Ã‚Â¡ticos (twemoji etc.): cache-first
   if (/jsdelivr|twemoji|cdnjs|unpkg|gstatic/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then((cached) => cached || fetch(req).then((res) => {

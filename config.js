@@ -6,8 +6,8 @@ const CONFIG = {
   BOLAO_NOME: 'Bolão da Copa 2026',
   EDICAO: 'v2 · Fase Eliminatória',
   VALOR_INSCRICAO: 50.00,
-  PIX_CHAVE: '76889726391',          // CPF sem pontos/traço
-  PIX_NOME: 'Bolao Copa 2026',       // sem acentos, máx. 25 chars
+  PIX_CHAVE: '+5585991524951',       // Celular (formato E.164: +55 + DDD + número)
+  PIX_NOME: 'Kleiton Gadelha Maia',  // sem acentos, máx. 25 chars
   PIX_CIDADE: 'Tabuleiro do Norte',  // sem acentos, máx. 15 chars
 };
 
