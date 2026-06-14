@@ -30,23 +30,19 @@
 
   <div class="auto-refresh"><span class="dot"></span> Atualização automática a cada 1 minuto</div>
 
-  <div class="stats-bar" id="stats"></div>
+  <div class="stats-bar" id="stats" style="grid-template-columns:repeat(2,1fr);"></div>
 
   <!-- Premiação -->
   <div class="card">
     <p class="card-titulo">💰 Premiação</p>
-    <div class="premiacao-grid">
+    <div class="premiacao-grid" style="grid-template-columns:1fr 1fr;">
       <div class="premiacao-item destaque"><span class="emoji">🥇</span><span class="label">Campeão 60%</span><div class="valor" id="pCampeao">R$ —</div></div>
       <div class="premiacao-item"><span class="emoji">🥈</span><span class="label">Vice 30%</span><div class="valor" id="pVice">R$ —</div></div>
-      <div class="premiacao-item"><span class="emoji">🛠️</span><span class="label">Organização 10%</span><div class="valor" id="pOrg">R$ —</div></div>
     </div>
   </div>
 
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
-      <p class="card-titulo" style="margin:0;">Classificação geral</p>
-      <span style="font-size:.68rem;color:var(--cinza-sub);">C1 · C2 · C3</span>
-    </div>
+    <p class="card-titulo" style="margin-bottom:.6rem;">Classificação geral</p>
     <div id="lista"><div class="vazio">Carregando…</div></div>
   </div>
 
@@ -69,13 +65,10 @@ async function carregar(silent) {
 
   document.getElementById('pCampeao').textContent = brl(res.premiacao.campeao);
   document.getElementById('pVice').textContent = brl(res.premiacao.vice);
-  document.getElementById('pOrg').textContent = brl(res.premiacao.organizacao);
 
   document.getElementById('stats').innerHTML = `
     <div class="stat-item"><div class="stat-valor">${res.totalParticipantes}</div><div class="stat-label">Aprovados</div></div>
-    <div class="stat-item destaque"><div class="stat-valor" style="font-size:1.15rem;">${brl(res.totalArrecadado)}</div><div class="stat-label">Arrecadado</div></div>
-    <div class="stat-item"><div class="stat-valor">${res.jogosMataMataApurados}</div><div class="stat-label">Jogos MM apurados</div></div>
-    <div class="stat-item"><div class="stat-valor">${res.totalJogosMataMata}</div><div class="stat-label">Jogos MM</div></div>`;
+    <div class="stat-item destaque"><div class="stat-valor" style="font-size:1.15rem;">${brl(res.totalArrecadado)}</div><div class="stat-label">Arrecadado</div></div>`;
 
   const lista = document.getElementById('lista');
   if (!res.ranking.length) { lista.innerHTML = '<div class="vazio">Nenhum participante aprovado ainda.</div>'; return; }
@@ -88,7 +81,7 @@ async function carregar(silent) {
       <div class="ranking-pos">${posTxt}</div>
       <div>
         <div class="ranking-nome">${r.nome}${r.id === perfil.id ? ' <span style="font-size:.7rem;color:var(--azul);">(você)</span>' : ''}</div>
-        <div class="ranking-sub">C1 ${r.c1.toFixed(0)} · C2 ${r.c2.toFixed(0)} · C3 ${r.c3.toFixed(1)}${r.acertouCampeao ? ' · 🏆' : ''}</div>
+        ${r.acertouCampeao ? '<div class="ranking-sub">🏆 Acertou o campeão</div>' : ''}
       </div>
       <div class="ranking-pts">${r.pontos.toFixed(1)}</div>
     </div>`;
