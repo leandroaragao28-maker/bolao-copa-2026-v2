@@ -17,7 +17,7 @@
 
     /* Bracket */
     .bracket-scroll { overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--cinza-borda); border-radius:12px; background:#fff; padding:.4rem .2rem; }
-    .bracket { display:flex; align-items:stretch; width:max-content; }
+    .bracket { display:flex; align-items:stretch; width:max-content; position:relative; }
     .round { display:flex; flex-direction:column; min-width:122px; }
     .round-h { font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:#7B1FA2; text-align:center; margin-bottom:.3rem; }
     .round-body { flex:1; display:flex; flex-direction:column; justify-content:space-around; }
@@ -29,7 +29,8 @@
     .team.win { background:#E8F5E9; color:#1B5E20; }
     .team.lose { color:var(--cinza-sub); }
     .team .sc { margin-left:auto; font-weight:900; padding-left:.3rem; }
-    .round:not(.fin) .match::after { content:''; position:absolute; left:100%; top:50%; width:8px; height:2px; background:var(--azul-palido); }
+    .match { z-index:1; }
+    .m-date { font-size:.55rem; color:var(--cinza-sub); text-align:center; padding:.1rem .2rem; background:#F6F8FC; border-bottom:1px solid #EEF1F6; font-weight:700; white-space:nowrap; }
     .leg { display:flex; gap:1rem; flex-wrap:wrap; font-size:.66rem; font-weight:700; color:var(--cinza-sub); margin-top:.7rem; }
     .leg i { width:.85rem; height:.85rem; border-radius:3px; display:inline-block; vertical-align:-2px; margin-right:.3rem; background:#E8F5E9; }
   </style>
@@ -60,44 +61,74 @@ function team(o) {
   const sc = (o.sc != null) ? `<span class="sc">${o.sc}</span>` : '';
   return `<div class="team ${cls}"><span class="bd">${bandeira(o.t)}</span>${o.t}${sc}</div>`;
 }
-function match(a, b) { return `<div class="match">${team(a)}${team(b)}</div>`; }
+function match(j) { return `<div class="match"><div class="m-date">${j.d}</div>${team(j.a)}${team(j.b)}</div>`; }
+const vp = n => ({ ph: 'Venc. J' + n });
 
-// Exemplo de placeholders (antes dos grupos)
 document.getElementById('ex').innerHTML =
-  match({ph:'1º Grupo A'}, {ph:'2º Grupo B'}) +
-  match({ph:'1º Grupo E'}, {ph:'Melhor 3º'});
+  match({ a:{ph:'1º Grupo A'}, b:{ph:'2º Grupo B'}, d:'28/06 · 16h' }) +
+  match({ a:{ph:'1º Grupo E'}, b:{ph:'Melhor 3º'}, d:'29/06 · 17h30' });
 
-// 32-avos JÁ disputados (bandeira + sigla + placar, vencedor em verde) — em ordem de árvore
+// 32-avos (bandeira + sigla + placar; vencedor em verde) — ordem de árvore, com data/hora
 const R32 = [
-  [{t:'ALE',sc:2,win:1},{t:'TCH',sc:0,lose:1}], [{t:'FRA',sc:1,lose:1},{t:'BOS',sc:2,win:1}],
-  [{t:'AFS',sc:2,win:1},{t:'SUI',sc:1,lose:1}], [{t:'HOL',sc:3,win:1},{t:'MAR',sc:1,lose:1}],
-  [{t:'COL',sc:0,lose:1},{t:'CRO',sc:1,win:1}], [{t:'ESP',sc:2,win:1},{t:'AUT',sc:0,lose:1}],
-  [{t:'EUA',sc:1,win:1},{t:'CDM',sc:0,lose:1}], [{t:'BEL',sc:2,win:1},{t:'SUE',sc:1,lose:1}],
-  [{t:'BRA',sc:3,win:1},{t:'JAP',sc:1,lose:1}], [{t:'EQU',sc:0,lose:1},{t:'SEN',sc:2,win:1}],
-  [{t:'MEX',sc:2,win:1},{t:'HAI',sc:1,lose:1}], [{t:'ING',sc:4,win:1},{t:'AUS',sc:0,lose:1}],
-  [{t:'ARG',sc:2,win:1},{t:'URU',sc:1,lose:1}], [{t:'PAR',sc:0,lose:1},{t:'EGI',sc:1,win:1}],
-  [{t:'CAN',sc:1,win:1},{t:'NZE',sc:0,lose:1}], [{t:'POR',sc:3,win:1},{t:'CAB',sc:0,lose:1}],
+  { a:{t:'ALE',sc:2,win:1}, b:{t:'TCH',sc:0,lose:1}, d:'29/06 · 17h30' },
+  { a:{t:'FRA',sc:1,lose:1}, b:{t:'BOS',sc:2,win:1}, d:'30/06 · 18h' },
+  { a:{t:'AFS',sc:2,win:1}, b:{t:'SUI',sc:1,lose:1}, d:'28/06 · 16h' },
+  { a:{t:'HOL',sc:3,win:1}, b:{t:'MAR',sc:1,lose:1}, d:'29/06 · 22h' },
+  { a:{t:'COL',sc:0,lose:1}, b:{t:'CRO',sc:1,win:1}, d:'02/07 · 20h' },
+  { a:{t:'ESP',sc:2,win:1}, b:{t:'AUT',sc:0,lose:1}, d:'02/07 · 16h' },
+  { a:{t:'EUA',sc:1,win:1}, b:{t:'CDM',sc:0,lose:1}, d:'01/07 · 21h' },
+  { a:{t:'BEL',sc:2,win:1}, b:{t:'SUE',sc:1,lose:1}, d:'01/07 · 17h' },
+  { a:{t:'BRA',sc:3,win:1}, b:{t:'JAP',sc:1,lose:1}, d:'29/06 · 14h' },
+  { a:{t:'EQU',sc:0,lose:1}, b:{t:'SEN',sc:2,win:1}, d:'30/06 · 14h' },
+  { a:{t:'MEX',sc:2,win:1}, b:{t:'HAI',sc:1,lose:1}, d:'30/06 · 22h' },
+  { a:{t:'ING',sc:4,win:1}, b:{t:'AUS',sc:0,lose:1}, d:'01/07 · 13h' },
+  { a:{t:'ARG',sc:2,win:1}, b:{t:'URU',sc:1,lose:1}, d:'03/07 · 19h' },
+  { a:{t:'PAR',sc:0,lose:1}, b:{t:'EGI',sc:1,win:1}, d:'03/07 · 15h' },
+  { a:{t:'CAN',sc:1,win:1}, b:{t:'NZE',sc:0,lose:1}, d:'03/07 · 0h' },
+  { a:{t:'POR',sc:3,win:1}, b:{t:'CAB',sc:0,lose:1}, d:'03/07 · 22h30' },
 ];
-// fases seguintes ainda não definidas -> "Venc. J##"
-const R16n = [[74,77],[73,75],[83,84],[81,82],[76,78],[79,80],[86,88],[85,87]];
-const QFn  = [[89,90],[93,94],[91,92],[95,96]];
-const SFn  = [[97,98],[99,100]];
-const FINn = [[101,102]];
-const vp = n => ({ph:'Venc. J'+n});
+function mkRound(pairs, datas) { return pairs.map((p, i) => ({ a:vp(p[0]), b:vp(p[1]), d:datas[i] })); }
+const R16 = mkRound([[74,77],[73,75],[83,84],[81,82],[76,78],[79,80],[86,88],[85,87]],
+  ['04/07 · 18h','04/07 · 14h','06/07 · 16h','06/07 · 21h','05/07 · 17h','05/07 · 21h','07/07 · 13h','07/07 · 17h']);
+const QF  = mkRound([[89,90],[93,94],[91,92],[95,96]], ['09/07 · 17h','10/07 · 16h','11/07 · 18h','11/07 · 22h']);
+const SF  = mkRound([[97,98],[99,100]], ['14/07 · 16h','15/07 · 16h']);
+const FIN = mkRound([[101,102]], ['19/07 · 16h']);
 
 function coluna(cls, header, jogos) {
   return `<div class="round ${cls}"><div class="round-h">${header}</div><div class="round-body">` +
-    jogos.map(j => match(j[0], j[1])).join('') + `</div></div>`;
+    jogos.map(match).join('') + `</div></div>`;
 }
-
 document.getElementById('bracket').innerHTML =
-  coluna('r32', 'Rodada de 32', R32) +
-  coluna('r16', 'Oitavas', R16n.map(p => [vp(p[0]), vp(p[1])])) +
-  coluna('qf',  'Quartas',  QFn.map(p => [vp(p[0]), vp(p[1])])) +
-  coluna('sf',  'Semis',    SFn.map(p => [vp(p[0]), vp(p[1])])) +
-  coluna('fin', 'Final',    FINn.map(p => [vp(p[0]), vp(p[1])]));
+  coluna('r32','Rodada de 32',R32) + coluna('r16','Oitavas',R16) + coluna('qf','Quartas',QF) + coluna('sf','Semis',SF) + coluna('fin','Final',FIN);
 
 aplicarTwemoji(document.body);
+
+function drawConnectors() {
+  const bracket = document.getElementById('bracket');
+  const old = bracket.querySelector('svg.conn'); if (old) old.remove();
+  const br = bracket.getBoundingClientRect();
+  const rounds = ['r32','r16','qf','sf','fin'].map(c => Array.from(bracket.querySelectorAll('.' + c + ' .match')));
+  const pt = (el, side) => { const r = el.getBoundingClientRect(); return { x:(side==='r'? r.right : r.left) - br.left, y:r.top + r.height/2 - br.top }; };
+  let d = '';
+  for (let ri = 0; ri < rounds.length - 1; ri++) {
+    const cur = rounds[ri], nxt = rounds[ri + 1];
+    for (let i = 0; i < nxt.length; i++) {
+      const a = pt(cur[2*i],'r'), b = pt(cur[2*i+1],'r'), p = pt(nxt[i],'l');
+      const mx = ((a.x > b.x ? a.x : b.x) + p.x) / 2;
+      d += `M${a.x} ${a.y}H${mx}M${b.x} ${b.y}H${mx}M${mx} ${a.y}V${b.y}M${mx} ${p.y}H${p.x}`;
+    }
+  }
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'conn'); svg.setAttribute('width', bracket.scrollWidth); svg.setAttribute('height', bracket.scrollHeight);
+  svg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:0;';
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d); path.setAttribute('stroke', '#9FA8DA'); path.setAttribute('stroke-width', '2'); path.setAttribute('fill', 'none');
+  svg.appendChild(path); bracket.insertBefore(svg, bracket.firstChild);
+}
+requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
+setTimeout(drawConnectors, 600);
+window.addEventListener('resize', drawConnectors);
 </script>
 </body>
 </html>
