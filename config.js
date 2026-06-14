@@ -210,3 +210,55 @@ function aplicarTwemoji(raiz) {
     className: 'emoji-tw'
   });
 }
+
+// ── PWA: manifest, ícones e service worker ──────────────────
+(function pwaSetup() {
+  try {
+    const head = document.head || document.getElementsByTagName('head')[0];
+    function addOnce(sel, tag, attrs) {
+      if (document.querySelector(sel)) return;
+      const el = document.createElement(tag);
+      for (const k in attrs) el.setAttribute(k, attrs[k]);
+      head.appendChild(el);
+    }
+    addOnce('link[rel="manifest"]', 'link', { rel: 'manifest', href: 'manifest.json' });
+    addOnce('link[rel="icon"]', 'link', { rel: 'icon', type: 'image/png', href: 'favicon-32.png' });
+    addOnce('link[rel="apple-touch-icon"]', 'link', { rel: 'apple-touch-icon', href: 'apple-touch-icon.png' });
+    addOnce('meta[name="apple-mobile-web-app-capable"]', 'meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+    addOnce('meta[name="mobile-web-app-capable"]', 'meta', { name: 'mobile-web-app-capable', content: 'yes' });
+    addOnce('meta[name="apple-mobile-web-app-status-bar-style"]', 'meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'default' });
+    addOnce('meta[name="apple-mobile-web-app-title"]', 'meta', { name: 'apple-mobile-web-app-title', content: 'Bolão Copa' });
+  } catch (e) {}
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+
+  // Botão flutuante "Instalar app" (Android / Chrome desktop)
+  const jaInstalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+  if (jaInstalado) return;
+  let promptDiferido = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    promptDiferido = e;
+    mostrarBotaoInstalar();
+  });
+  window.addEventListener('appinstalled', function () {
+    const b = document.getElementById('pwa-install-btn'); if (b) b.remove();
+  });
+  function mostrarBotaoInstalar() {
+    if (document.getElementById('pwa-install-btn') || !document.body) return;
+    const b = document.createElement('button');
+    b.id = 'pwa-install-btn';
+    b.textContent = '📲 Instalar app';
+    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 76px);z-index:9000;background:#F9A825;color:#1A237E;border:none;border-radius:999px;padding:.6rem 1.1rem;font-weight:800;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.28);cursor:pointer;';
+    b.onclick = function () {
+      if (!promptDiferido) { b.remove(); return; }
+      promptDiferido.prompt();
+      promptDiferido.userChoice.finally(function () { promptDiferido = null; b.remove(); });
+    };
+    document.body.appendChild(b);
+  }
+})();
