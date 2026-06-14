@@ -106,7 +106,27 @@ async function exigirLogin(redirecionar) {
   const res = await api({ action: 'verificarSessao', token });
   if (!res.ok) { if (redirecionar !== false) { localStorage.removeItem('bc_token'); window.location.href = 'login.html'; } return null; }
   salvarSessao(token, res.perfil);
+  if (res.perfil && res.perfil.isAdmin) _injetarLinkAdmin();
   return res.perfil;
+}
+
+// Mostra o link da área restrita só para participantes marcados como isAdmin.
+function _injetarLinkAdmin() {
+  const ativo = /admin\.html$/.test(location.pathname);
+  document.querySelectorAll('header nav').forEach(nav => {
+    if (nav.querySelector('.nav-admin')) return;
+    const a = document.createElement('a');
+    a.href = 'admin.html'; a.className = 'nav-admin' + (ativo ? ' ativo' : ''); a.textContent = '⚙️ Admin';
+    const sair = Array.from(nav.querySelectorAll('a')).find(x => /sair/i.test(x.textContent));
+    if (sair) nav.insertBefore(a, sair); else nav.appendChild(a);
+  });
+  document.querySelectorAll('.bottom-nav').forEach(bn => {
+    if (bn.querySelector('.bnav-admin')) return;
+    const a = document.createElement('a');
+    a.href = 'admin.html'; a.className = 'bnav-admin' + (ativo ? ' ativo' : '');
+    a.innerHTML = '<span class="bnav-icon">⚙️</span>Admin';
+    bn.appendChild(a);
+  });
 }
 
 // ── Datas / horário (fuso de Brasília, igual à v1) ──────────

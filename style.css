@@ -49,6 +49,10 @@ header nav a {
   transition: all .2s; white-space: nowrap;
 }
 header nav a:hover, header nav a.ativo { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.5); }
+header nav a.nav-admin { border-color: var(--ouro); color: #FFE082; }
+header nav a.nav-admin:hover, header nav a.nav-admin.ativo { background: var(--ouro); color: #4E342E; border-color: var(--ouro); }
+.bottom-nav a.bnav-admin { color: #FFE082; }
+.bottom-nav a.bnav-admin.ativo { color: #fff; }
 
 /* ── Bottom nav ────────────────────────────────────────────── */
 .bottom-nav {
