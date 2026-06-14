@@ -7,6 +7,30 @@
   <title>Classificação dos grupos — Camada 1</title>
   <link rel="stylesheet" href="style.css">
   <script src="config.js"></script>
+  <style>
+    .g-row { display:flex; align-items:center; gap:.6rem; background:#fff; border-radius:14px; box-shadow:0 2px 10px rgba(13,19,86,.06); padding:.55rem .7rem; margin-bottom:.5rem; }
+    .g-row.ok .g-hex { box-shadow:0 0 0 2px rgba(46,125,50,.3); }
+    .g-hex { width:40px; height:44px; flex-shrink:0; background:linear-gradient(150deg,#1A237E,#3949AB); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:1.15rem; }
+    .g-slots { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .g-slot { display:flex; align-items:center; gap:.4rem; border:2px solid var(--cinza-borda); background:#fff; border-radius:10px; padding:.35rem .45rem; cursor:pointer; font-weight:800; font-size:.85rem; color:var(--cinza-texto); min-height:42px; transition:all .12s; }
+    .g-slot.fill { border-color:var(--azul-palido); background:var(--azul-fundo); }
+    .g-slot.editing { border-color:var(--azul); box-shadow:0 0 0 2px rgba(63,81,181,.2); }
+    .g-slot.lock { cursor:default; }
+    .g-slot .bd { font-size:1.2rem; }
+    .g-cod { letter-spacing:.02em; }
+    .g-ph { color:var(--cinza-sub); font-weight:600; font-size:.74rem; }
+    .medal { width:21px; height:21px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:900; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,.18); }
+    .m1 { background:linear-gradient(135deg,#FFD54F,#F9A825); color:#7a4f00; }
+    .m2 { background:linear-gradient(135deg,#ECEFF1,#90A4AE); color:#37474F; }
+    .picker { background:var(--cinza-fundo); border-radius:12px; padding:.5rem; margin:-.15rem 0 .6rem; }
+    .picker-h { font-size:.66rem; font-weight:800; color:var(--cinza-sub); text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; }
+    .picker-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.4rem; }
+    .pk { display:flex; align-items:center; gap:.4rem; border:2px solid var(--cinza-borda); background:#fff; border-radius:8px; padding:.4rem .5rem; cursor:pointer; font-weight:700; font-size:.82rem; color:var(--cinza-texto); text-align:left; }
+    .pk .bd { font-size:1.1rem; flex-shrink:0; }
+    .pk.dis { opacity:.4; cursor:not-allowed; }
+    .rodape-pts { background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(13,19,86,.06); padding:.7rem 1rem; font-size:.76rem; color:var(--cinza-sub); margin-top:.6rem; text-align:center; line-height:1.5; }
+    .rodape-pts b { color:var(--azul); }
+  </style>
 </head>
 <body>
 
@@ -52,6 +76,8 @@
     <div class="terceiros-grid" id="terceirosGrid"></div>
   </div>
 
+  <div class="rodape-pts">⭐ <b>Pontuação da Camada 1:</b> 1º exato <b>+5</b> · 2º exato <b>+5</b> · avança fora da posição <b>+3</b> · terceiro certo <b>+2</b></div>
+
   <div style="height:1.5rem;"></div>
 </div>
 
@@ -61,6 +87,7 @@ let encerrado = false;
 let GRUPOS = {};                  // { A: [t1,t2,t3,t4] }
 const estado = {};                // { A: {pos1,pos2} }
 let terceiros = [];               // siglas selecionadas
+let editing = null;               // 'A-1' / 'A-2' (slot em edição)
 
 async function init() {
   perfil = await exigirLogin();
@@ -99,53 +126,53 @@ async function init() {
 
 function render() {
   const cont = document.getElementById('conteudo');
-  cont.innerHTML = '';
-  Object.keys(GRUPOS).sort().forEach(g => {
-    const e = estado[g] || {};
-    const box = document.createElement('div');
-    box.className = 'grupo-box' + ((e.pos1 && e.pos2) ? ' ok' : '');
-    box.id = 'gb_' + g;
-    box.innerHTML = `
-      <h3>Grupo ${g} <span style="font-size:.7rem;color:var(--cinza-sub);font-weight:600;">${GRUPOS[g].length} seleções</span></h3>
-      ${linhaSelect(g, 'pos1', '1º')}
-      ${linhaSelect(g, 'pos2', '2º')}`;
-    cont.appendChild(box);
-  });
+  cont.innerHTML = Object.keys(GRUPOS).sort().map(grupoRow).join('');
   renderTerceiros();
   aplicarTwemoji(cont);
 }
 
-function linhaSelect(g, pos, rotulo) {
+function slot(g, pos) {
   const e = estado[g] || {};
-  const sel = e[pos] || '';
-  const opcoes = ['<option value="">— escolher —</option>']
-    .concat(GRUPOS[g].map(t => `<option value="${t}" ${sel === t ? 'selected' : ''}>${nomeTime(t)}</option>`))
-    .join('');
-  const cls = pos === 'pos1' ? 'p1' : pos === 'pos2' ? 'p2' : 'p3';
-  return `<div class="pos-linha ${cls}">
-    <div class="pos-rotulo">${rotulo}</div>
-    <select id="s_${g}_${pos}" ${encerrado ? 'disabled' : ''} onchange="mudar('${g}','${pos}',this.value)">${opcoes}</select>
-  </div>`;
+  const t = pos === 1 ? e.pos1 : e.pos2;
+  const med = `<span class="medal m${pos}">${pos}</span>`;
+  const ed = (!encerrado && editing === g + '-' + pos) ? ' editing' : '';
+  const inner = t
+    ? `${med}<span class="bd">${bandeira(t)}</span><span class="g-cod">${t}</span>`
+    : `${med}<span class="g-ph">${encerrado ? '—' : 'escolher ' + pos + 'º'}</span>`;
+  const click = encerrado ? '' : `onclick="abrirPicker('${g}',${pos})"`;
+  return `<button class="g-slot${t ? ' fill' : ''}${ed}${encerrado ? ' lock' : ''}" ${click}>${inner}</button>`;
 }
 
-function mudar(g, pos, val) {
+function grupoRow(g) {
+  const e = estado[g] || {};
+  const ok = e.pos1 && e.pos2;
+  let html = `<div class="g-row${ok ? ' ok' : ''}" id="gb_${g}"><div class="g-hex">${g}</div><div class="g-slots">${slot(g,1)}${slot(g,2)}</div></div>`;
+  if (!encerrado && editing && editing.split('-')[0] === g) {
+    const pos = +editing.split('-')[1];
+    const outro = pos === 1 ? e.pos2 : e.pos1;
+    html += `<div class="picker"><div class="picker-h">Quem foi o ${pos}º do Grupo ${g}?</div><div class="picker-grid">` +
+      GRUPOS[g].map(t => {
+        const dis = t === outro;
+        return `<button class="pk${dis ? ' dis' : ''}" ${dis ? '' : `onclick="escolherPos('${g}',${pos},'${t}')"`}><span class="bd">${bandeira(t)}</span>${nomeTime(t)}</button>`;
+      }).join('') + `</div></div>`;
+  }
+  return html;
+}
+
+function abrirPicker(g, pos) {
+  if (encerrado) return;
+  editing = (editing === g + '-' + pos) ? null : (g + '-' + pos);
+  render();
+}
+
+function escolherPos(g, pos, t) {
+  if (encerrado) return;
   if (!estado[g]) estado[g] = {};
-  estado[g][pos] = val;
-  const e = estado[g];
-  const vals = [e.pos1, e.pos2].filter(Boolean);
-  const dup = vals.length !== new Set(vals).size;
-  ['pos1','pos2'].forEach(p => {
-    const s = document.getElementById('s_' + g + '_' + p);
-    if (!s) return;
-    const v = e[p];
-    const repetido = v && vals.filter(x => x === v).length > 1;
-    s.classList.toggle('dup', !!repetido);
-  });
-  if (dup) toast('Não repita a mesma seleção no grupo.', 'aviso');
+  if (pos === 1) estado[g].pos1 = t; else estado[g].pos2 = t;
+  editing = null;
   // um time agora escolhido como 1º/2º não pode seguir marcado como terceiro
-  terceiros = terceiros.filter(t => poolTerceiros().indexOf(t) >= 0);
-  document.getElementById('gb_' + g).classList.toggle('ok', !!(e.pos1 && e.pos2) && !dup);
-  renderTerceiros();
+  terceiros = terceiros.filter(x => poolTerceiros().indexOf(x) >= 0);
+  render();
   marcarSujo();
 }
 
