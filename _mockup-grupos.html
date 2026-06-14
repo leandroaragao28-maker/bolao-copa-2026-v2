@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A237E">
+  <title>MOCKUP · Camada 1 (escolha 1º/2º)</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js"></script>
+  <style>
+    .mock-banner { background:var(--ouro-claro); border:2px solid var(--ouro); border-radius:10px; padding:.6rem .8rem; font-size:.82rem; color:#4E342E; margin-bottom:1rem; }
+    .cab { display:flex; gap:.6rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .cab-tit { background:linear-gradient(135deg,#1A237E,#283593); border-radius:14px; padding:.7rem 1rem; color:#fff; display:flex; align-items:center; gap:.6rem; flex:1; min-width:200px; }
+    .trofeu { font-size:2rem; }
+    .cab-c1 { font-size:1.05rem; font-weight:900; letter-spacing:.02em; }
+    .cab-c2 { font-size:.7rem; opacity:.85; }
+    .cab-info { background:#fff; border:1px solid var(--cinza-borda); border-radius:12px; padding:.65rem .85rem; font-size:.78rem; color:var(--cinza-sub); line-height:1.5; flex:1; min-width:200px; }
+
+    .g-row { display:flex; align-items:center; gap:.6rem; background:#fff; border-radius:14px; box-shadow:0 2px 10px rgba(13,19,86,.06); padding:.55rem .7rem; margin-bottom:.5rem; }
+    .g-hex { width:40px; height:44px; flex-shrink:0; background:linear-gradient(150deg,#1A237E,#3949AB); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:1.15rem; }
+    .g-slots { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .g-slot { display:flex; align-items:center; gap:.4rem; border:2px solid var(--cinza-borda); background:#fff; border-radius:10px; padding:.35rem .45rem; cursor:pointer; font-weight:800; font-size:.85rem; color:var(--cinza-texto); min-height:42px; transition:all .12s; }
+    .g-slot.fill { border-color:var(--azul-palido); background:var(--azul-fundo); }
+    .g-slot.editing { border-color:var(--azul); box-shadow:0 0 0 2px rgba(63,81,181,.2); }
+    .g-slot .bd { font-size:1.2rem; }
+    .g-cod { letter-spacing:.02em; }
+    .g-ph { color:var(--cinza-sub); font-weight:600; font-size:.74rem; }
+    .medal { width:21px; height:21px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:900; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,.18); }
+    .m1 { background:linear-gradient(135deg,#FFD54F,#F9A825); color:#7a4f00; }
+    .m2 { background:linear-gradient(135deg,#ECEFF1,#90A4AE); color:#37474F; }
+
+    .picker { background:var(--cinza-fundo); border-radius:12px; padding:.5rem; margin:-.15rem 0 .6rem; }
+    .picker-h { font-size:.66rem; font-weight:800; color:var(--cinza-sub); text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; }
+    .picker-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.4rem; }
+    .pk { display:flex; align-items:center; gap:.4rem; border:2px solid var(--cinza-borda); background:#fff; border-radius:8px; padding:.4rem .5rem; cursor:pointer; font-weight:700; font-size:.82rem; }
+    .pk .bd { font-size:1.1rem; }
+    .pk.dis { opacity:.4; cursor:not-allowed; }
+    .rodape { background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(13,19,86,.06); padding:.7rem 1rem; font-size:.76rem; color:var(--cinza-sub); margin-top:.6rem; text-align:center; }
+    .rodape b { color:var(--azul); }
+  </style>
+</head>
+<body>
+<header>
+  <span class="logo">📊</span>
+  <div class="header-texto"><h1>MOCKUP · Camada 1</h1><p>escolha de 1º/2º</p></div>
+</header>
+
+<div class="container">
+  <div class="mock-banner">🔎 Estilo novo da escolha de 1º/2º. <strong>Toque num slot</strong> (1º ou 2º) para escolher o time daquele grupo. Grupos I–L estão vazios pra mostrar o estado em branco.</div>
+
+  <div class="cab">
+    <div class="cab-tit"><span class="trofeu">🏆</span><div><div class="cab-c1">CAMADA 1</div><div class="cab-c2">Classificação dos grupos</div></div></div>
+    <div class="cab-info">ℹ️ Defina o <b style="color:var(--cinza-texto)">1º</b> e o <b style="color:var(--cinza-texto)">2º</b> de cada grupo. Depois escolha 8 times como melhores terceiros. <b style="color:var(--cinza-texto)">Trava em 24/06, 15:55.</b></div>
+  </div>
+
+  <div id="grupos"></div>
+
+  <div class="rodape">⭐ <b>Pontuação da Camada 1:</b> 1º exato <b>+5</b> · 2º exato <b>+5</b> · avança fora da posição <b>+3</b> · terceiro certo <b>+2</b></div>
+</div>
+
+<script>
+const GRUPOS = {
+  A:['MEX','AFS','COR','TCH'], B:['CAN','BOS','QAT','SUI'], C:['BRA','MAR','HAI','ESC'],
+  D:['EUA','PAR','AUS','TUR'], E:['ALE','CUR','CDM','EQU'], F:['HOL','JAP','SUE','TUN'],
+  G:['BEL','EGI','IRA','NZE'], H:['ESP','CAB','ARS','URU'], I:['FRA','SEN','IRQ','NOR'],
+  J:['ARG','AGL','AUT','JOR'], K:['POR','RDC','UZB','COL'], L:['ING','CRO','GAN','PAN']
+};
+const estado = {
+  A:{pos1:'MEX',pos2:'AFS'}, B:{pos1:'CAN',pos2:'BOS'}, C:{pos1:'BRA',pos2:'MAR'}, D:{pos1:'EUA',pos2:'PAR'},
+  E:{pos1:'ALE',pos2:'CUR'}, F:{pos1:'HOL',pos2:'JAP'}, G:{pos1:'BEL',pos2:'EGI'}, H:{pos1:'ESP',pos2:'CAB'},
+  I:{}, J:{}, K:{}, L:{}
+};
+let editing = null;
+
+function slot(g, pos) {
+  const e = estado[g] || {};
+  const t = pos === 1 ? e.pos1 : e.pos2;
+  const med = `<span class="medal m${pos}">${pos}</span>`;
+  const ed = editing === g + '-' + pos ? ' editing' : '';
+  const inner = t ? `${med}<span class="bd">${bandeira(t)}</span><span class="g-cod">${t}</span>` : `${med}<span class="g-ph">escolher ${pos}º</span>`;
+  return `<button class="g-slot${t ? ' fill' : ''}${ed}" onclick="abrirPicker('${g}',${pos})">${inner}</button>`;
+}
+function grupoRow(g) {
+  let html = `<div class="g-row"><div class="g-hex">${g}</div><div class="g-slots">${slot(g,1)}${slot(g,2)}</div></div>`;
+  if (editing && editing.split('-')[0] === g) {
+    const pos = +editing.split('-')[1];
+    const outro = pos === 1 ? (estado[g] || {}).pos2 : (estado[g] || {}).pos1;
+    html += `<div class="picker"><div class="picker-h">Quem foi o ${pos}º do Grupo ${g}?</div><div class="picker-grid">` +
+      GRUPOS[g].map(t => {
+        const dis = t === outro;
+        return `<button class="pk${dis ? ' dis' : ''}" ${dis ? '' : `onclick="escolher('${g}',${pos},'${t}')"`}><span class="bd">${bandeira(t)}</span>${nomeTime(t)}</button>`;
+      }).join('') + `</div></div>`;
+  }
+  return html;
+}
+function render() {
+  document.getElementById('grupos').innerHTML = Object.keys(GRUPOS).map(grupoRow).join('');
+  aplicarTwemoji(document.getElementById('grupos'));
+}
+function abrirPicker(g, pos) { editing = (editing === g + '-' + pos) ? null : (g + '-' + pos); render(); }
+function escolher(g, pos, t) { if (!estado[g]) estado[g] = {}; if (pos === 1) estado[g].pos1 = t; else estado[g].pos2 = t; editing = null; render(); }
+render();
+</script>
+</body>
+</html>
