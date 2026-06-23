@@ -134,7 +134,7 @@
 
 <script>
 let senha = '';
-let _part = [], _cont = { grupos:{}, bracket:{}, mataMata:{} }, _filtro = 'todos';
+let _part = [], _cont = { grupos:{}, mataMata:{} }, _filtro = 'todos';
 let _resGrupos = {}, _jogos = [], _jogosMM = [], _resMM = {};
 
 const TIMES_ORD = Object.keys(NOMES).sort((a,b) => nomeTime(a).localeCompare(nomeTime(b)));
@@ -175,7 +175,7 @@ async function carregarPart() {
   ]);
   if (!r.ok) { toast(r.msg, 'erro'); return; }
   _part = r.participantes;
-  _cont = rc.ok ? rc.contagens : { grupos:{}, bracket:{}, mataMata:{} };
+  _cont = rc.ok ? rc.contagens : { grupos:{}, mataMata:{} };
   const pend = _part.filter(p => p.status === 'PENDENTE').length;
   const aprov = _part.filter(p => p.status === 'APROVADO').length;
   document.getElementById('statsPart').innerHTML = `
@@ -413,13 +413,12 @@ function reportParticipantes() {
   const maxNome = Math.max(...aprov.map(p => p.nome.length));
   const linhas = aprov.map(p => {
     const g = _cont.grupos[p.id] ? '✅' : '❌';
-    const br = (_cont.bracket[p.id] || 0);
     const mm = (_cont.mataMata[p.id] || 0);
-    return `${p.nome.padEnd(maxNome,' ')}  C1${g} C2:${String(br).padStart(2)} C3:${String(mm).padStart(2)}`;
+    return `${p.nome.padEnd(maxNome,' ')}  C1${g} C3:${String(mm).padStart(2)}`;
   });
-  const sep = '━'.repeat(Math.min(maxNome + 16, 34));
+  const sep = '━'.repeat(Math.min(maxNome + 10, 34));
   const data = new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-  abrirModal([`📊 *Bolão Copa 2026 v2 — Palpites*`, `_${data}_`, sep, ...linhas, sep, `👥 ${aprov.length} aprovados · C1=grupos, C2=bracket, C3=placares`].join('\n'));
+  abrirModal([`📊 *Bolão Copa 2026 v2 — Palpites*`, `_${data}_`, sep, ...linhas, sep, `👥 ${aprov.length} aprovados · C1=grupos, C3=placares MM`].join('\n'));
 }
 async function reportRanking() {
   const res = await api({ action: 'getRanking' });
