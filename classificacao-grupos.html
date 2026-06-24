@@ -54,6 +54,8 @@
 
 <div class="container">
 
+  <div class="banner-aviso" id="bannerAdmin" style="display:none;"></div>
+
   <div class="banner-info" id="bannerInfo">
     Defina o <strong>1º e o 2º</strong> de cada grupo. Depois escolha <strong>8 times</strong> como melhores terceiros.
     <span id="travaTxt"></span>
@@ -88,14 +90,31 @@ let GRUPOS = {};                  // { A: [t1,t2,t3,t4] }
 const estado = {};                // { A: {pos1,pos2} }
 let terceiros = [];               // siglas selecionadas
 let editing = null;               // 'A-1' / 'A-2' (slot em edição)
+let _adminC1 = null;              // { senha, pid, nome } quando lançado pelo admin
 
 async function init() {
-  perfil = await exigirLogin();
-  if (!perfil) return;
+  // detectar modo admin
+  try {
+    const raw = sessionStorage.getItem('adminC1Mode');
+    if (raw) { _adminC1 = JSON.parse(raw); sessionStorage.removeItem('adminC1Mode'); }
+  } catch (e) {}
+
+  if (_adminC1) {
+    // modo admin: não exige login normal, mostra banner
+    document.getElementById('bannerAdmin').style.display = '';
+    document.getElementById('bannerAdmin').innerHTML =
+      '⚙️ <strong>Modo admin</strong> — lançando palpites C1 de <strong>' + _adminC1.nome + '</strong>. <a href="admin.html" style="color:var(--azul);">Voltar ao admin</a>';
+    encerrado = false;
+  } else {
+    perfil = await exigirLogin();
+    if (!perfil) return;
+  }
 
   const [rj, rp] = await Promise.all([
     api({ action: 'getJogos' }),
-    api({ action: 'getPalpiteGrupos', token: getToken() })
+    _adminC1
+      ? api({ action: 'adminGetPalpiteGrupos', senha: _adminC1.senha, pid: _adminC1.pid })
+      : api({ action: 'getPalpiteGrupos', token: getToken() })
   ]);
   if (!rj.ok) { toast('Erro ao carregar jogos.', 'erro'); return; }
 
@@ -105,10 +124,12 @@ async function init() {
     [j.time1, j.time2].forEach(t => { if (GRUPOS[j.grupo].indexOf(t) < 0) GRUPOS[j.grupo].push(t); });
   });
 
-  encerrado = rp.ok ? rp.encerrado : (Date.now() >= rj.travaCamada1);
-  const trava = rp.trava || rj.travaCamada1;
-  document.getElementById('travaTxt').textContent = encerrado ? '' :
-    ' Trava em ' + new Date(trava).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '.';
+  if (!_adminC1) {
+    encerrado = rp.ok ? rp.encerrado : (Date.now() >= rj.travaCamada1);
+    const trava = rp.trava || rj.travaCamada1;
+    document.getElementById('travaTxt').textContent = encerrado ? '' :
+      ' Trava em ' + new Date(trava).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '.';
+  }
 
   // estado salvo
   if (rp.ok && rp.dados) {
@@ -228,8 +249,7 @@ let sujo = false;
 function marcarSujo() { sujo = true; if (!encerrado) document.getElementById('fab').classList.add('visivel'); }
 
 async function salvar() {
-  if (encerrado) { toast('Palpites encerrados.', 'aviso'); return; }
-  // validar duplicados
+  if (!_adminC1 && encerrado) { toast('Palpites encerrados.', 'aviso'); return; }
   for (const g of Object.keys(estado)) {
     const e = estado[g];
     const vals = [e.pos1, e.pos2].filter(Boolean);
@@ -245,12 +265,16 @@ async function salvar() {
 
   const fab = document.getElementById('fab');
   fab.disabled = true; fab.textContent = 'Salvando…';
-  const res = await api({ action: 'salvarPalpiteGrupos', token: getToken(), dados: { grupos, terceiros } });
+  const req = _adminC1
+    ? { action: 'adminSalvarPalpiteGrupos', senha: _adminC1.senha, pid: _adminC1.pid, dados: { grupos, terceiros } }
+    : { action: 'salvarPalpiteGrupos', token: getToken(), dados: { grupos, terceiros } };
+  const res = await api(req);
   fab.disabled = false; fab.innerHTML = '💾 Salvar palpite';
   if (res.ok) {
     sujo = false; fab.classList.remove('visivel');
     const completos = Object.keys(grupos).filter(g => grupos[g].pos1 && grupos[g].pos2).length;
     toast('Salvo! ' + completos + '/12 grupos · ' + terceiros.length + '/8 terceiros.', 'ok');
+    if (_adminC1) setTimeout(() => { window.location.href = 'admin.html'; }, 1500);
   } else toast(res.msg || 'Erro ao salvar.', 'erro');
 }
 

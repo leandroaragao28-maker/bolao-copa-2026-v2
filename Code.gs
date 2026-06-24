@@ -288,6 +288,8 @@ function doPost(e) {
     // ── Camada 1 ──
     else if (a === 'salvarPalpiteGrupos')      resultado = salvarPalpiteGrupos(body);
     else if (a === 'getPalpiteGrupos')         resultado = getPalpiteGrupos(body.token);
+    else if (a === 'adminGetPalpiteGrupos')    resultado = adminGetPalpiteGrupos(body);
+    else if (a === 'adminSalvarPalpiteGrupos') resultado = adminSalvarPalpiteGrupos(body);
     // ── Camada 2 ──
     else if (a === 'salvarGolsFinal')          resultado = salvarGolsFinal(body);
     // ── Camada 3 ──
@@ -489,6 +491,36 @@ function getPalpiteGrupos(token) {
     }
   }
   return { ok: true, dados: null, encerrado: camada1Encerrada(), trava: getTravaCamada1() };
+}
+
+function adminGetPalpiteGrupos(body) {
+  if (!_adminOk(body.senha)) return { ok: false, msg: 'Acesso negado.' };
+  if (!body.pid) return { ok: false, msg: 'pid obrigatório.' };
+  const aba = _aba('PalpitesGrupos', ['ParticipanteID','Dados','DataRegistro']);
+  const vals = aba.getDataRange().getValues();
+  for (let i = 1; i < vals.length; i++) {
+    if (vals[i][0] === body.pid) {
+      let d = {};
+      try { d = JSON.parse(vals[i][1]); } catch (e) {}
+      return { ok: true, dados: d };
+    }
+  }
+  return { ok: true, dados: null };
+}
+
+function adminSalvarPalpiteGrupos(body) {
+  if (!_adminOk(body.senha)) return { ok: false, msg: 'Acesso negado.' };
+  const pid = body.pid, dados = body.dados;
+  if (!pid || !dados || !dados.grupos) return { ok: false, msg: 'Dados inválidos.' };
+  const aba = _aba('PalpitesGrupos', ['ParticipanteID','Dados','DataRegistro']);
+  const vals = aba.getDataRange().getValues();
+  const agora = new Date().toISOString();
+  const json = JSON.stringify(dados);
+  for (let i = 1; i < vals.length; i++) {
+    if (vals[i][0] === pid) { aba.getRange(i + 1, 2, 1, 2).setValues([[json, agora]]); return { ok: true, msg: 'Palpite salvo pelo admin!' }; }
+  }
+  aba.appendRow([pid, json, agora]);
+  return { ok: true, msg: 'Palpite salvo pelo admin!' };
 }
 
 // ── Classificação real dos grupos (FIFA) a partir dos resultados ──
