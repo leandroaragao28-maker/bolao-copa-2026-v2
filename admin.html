@@ -70,7 +70,10 @@
       <div class="card" style="padding:.8rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
           <p class="card-titulo" style="font-size:.9rem;margin:0;">Resultados — fase de grupos</p>
-          <button class="btn btn-secondary btn-sm" onclick="sincronizarV1()">🔄 Atualizar do v1</button>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="sincronizarFDA(this)">🌐 Buscar online</button>
+            <button class="btn btn-secondary btn-sm" onclick="sincronizarV1()">🔄 Atualizar do v1</button>
+          </div>
         </div>
         <div class="banner-info" id="bannerGruposV1" style="margin-bottom:.8rem;">⏳ Verificando link com o v1…</div>
         <div id="listaGrupos"></div>
@@ -104,7 +107,10 @@
         </div>
       </details>
       <div class="card" style="padding:.8rem;">
-        <p class="card-titulo" style="font-size:.9rem;">Confrontos & resultados</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
+          <p class="card-titulo" style="font-size:.9rem;margin:0;">Confrontos & resultados</p>
+          <button class="btn btn-primary btn-sm" onclick="sincronizarFDA(this)">🌐 Buscar online</button>
+        </div>
         <div class="banner-info" style="margin-bottom:.8rem;">Lance placar + <strong>quem avançou</strong> (obrigatório em empate por pênaltis). Alimenta Camadas 2 e 3.</div>
         <div id="listaMM"></div>
       </div>
@@ -273,6 +279,17 @@ async function carregarGrupos() {
 async function sincronizarV1() {
   const res = await api({ action: 'sincronizarGruposV1', senha });
   if (res.ok) { toast(res.msg, 'ok'); carregarGrupos(); } else toast(res.msg, 'erro');
+}
+async function sincronizarFDA(btn) {
+  const txt = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Buscando…';
+  try {
+    const res = await api({ action: 'sincronizarResultadosFDA', senha });
+    if (res.ok) { toast(res.msg, 'ok'); carregarGrupos(); carregarMM(); }
+    else toast(res.msg, 'erro');
+  } finally {
+    btn.disabled = false; btn.textContent = txt;
+  }
 }
 async function salvarResGrupo(id) {
   const g1 = document.getElementById('rg1_'+id).value, g2 = document.getElementById('rg2_'+id).value;

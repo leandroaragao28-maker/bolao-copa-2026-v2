@@ -30,6 +30,10 @@ const ADMIN_PASSWORD = 'DEFINA_UMA_SENHA_FORTE';   // ← defina no editor (NÃO
 // dos grupos automaticamente (mesmos IDs 1..72), evitando re-lançar placares.
 const V1_API_URL = 'https://script.google.com/macros/s/AKfycbyZEHNn7NmtJk1IMUfiKSVbpMcTie2ZrIG2cygqj6I_MhBWdZjtR8gJibIRL4AMn-FsRg/exec';
 
+// Chave da API football-data.org — cadastro gratuito em https://www.football-data.org/client/register
+// Após criar a conta, cole aqui a chave recebida por e-mail (campo "Authentication Token").
+const FOOTBALL_DATA_API_KEY = '';   // ← cole sua chave aqui
+
 const VALOR_INSCRICAO = 50;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
 
@@ -95,6 +99,45 @@ const BRACKET = [
 // Os 8 jogos dos 32-avos que recebem um "melhor terceiro" (admin aloca).
 const THIRD_SLOTS = BRACKET.filter(b => b.l2.t === '3').map(b => ({ slot: b.l2.slot, jogo: b.n, vencedorGrupo: b.l1.g, grupos: b.l2.grupos }));
 function _jogoIdK(n) { return 'K' + n; }
+
+// ────────────────────────────────────────────────────────────
+// MAPEAMENTO football-data.org → códigos locais do bolão
+// Fonte: TLA (3-letter code) retornado pela API; inclui variantes ISO e FIFA.
+// Se aparecer "ignorado" no log, adicione o TLA desconhecido aqui.
+// ────────────────────────────────────────────────────────────
+const MAPA_FD = {
+  'MEX':'MEX', 'RSA':'AFS', 'KOR':'COR', 'CZE':'TCH',
+  'CAN':'CAN', 'BIH':'BOS', 'QAT':'QAT', 'SUI':'SUI', 'CHE':'SUI',
+  'BRA':'BRA', 'MAR':'MAR', 'HTI':'HAI', 'SCO':'ESC',
+  'USA':'EUA', 'PAR':'PAR', 'PRY':'PAR', 'AUS':'AUS', 'TUR':'TUR',
+  'GER':'ALE', 'DEU':'ALE', 'CUW':'CUR',
+  'CIV':'CDM', 'ECU':'EQU',
+  'NED':'HOL', 'JPN':'JAP', 'SWE':'SUE', 'TUN':'TUN',
+  'BEL':'BEL', 'EGY':'EGI', 'IRN':'IRA', 'IRI':'IRA', 'NZL':'NZE',
+  'ESP':'ESP', 'CPV':'CAB', 'SAU':'ARS', 'URU':'URU',
+  'FRA':'FRA', 'SEN':'SEN', 'IRQ':'IRQ', 'NOR':'NOR',
+  'ARG':'ARG', 'DZA':'AGL', 'ALG':'AGL', 'AUT':'AUT', 'JOR':'JOR',
+  'POR':'POR', 'COD':'RDC', 'DRC':'RDC', 'UZB':'UZB', 'COL':'COL',
+  'ENG':'ING', 'CRO':'CRO', 'GHA':'GAN', 'PAN':'PAN'
+};
+
+// Fallback por nome completo do time (para quando tla está vazio ou desconhecido).
+const MAPA_FD_NOME = {
+  'Mexico':'MEX', 'South Africa':'AFS', 'Korea Republic':'COR', 'Czechia':'TCH', 'Czech Republic':'TCH',
+  'Canada':'CAN', 'Bosnia and Herzegovina':'BOS', 'Qatar':'QAT', 'Switzerland':'SUI',
+  'Brazil':'BRA', 'Morocco':'MAR', 'Haiti':'HAI', 'Scotland':'ESC',
+  'United States':'EUA', 'United States of America':'EUA', 'Paraguay':'PAR', 'Australia':'AUS',
+  'Turkey':'TUR', 'Türkiye':'TUR', 'Germany':'ALE', 'Curaçao':'CUR', 'Curacao':'CUR',
+  "Côte d'Ivoire":'CDM', 'Ivory Coast':'CDM', 'Ecuador':'EQU',
+  'Netherlands':'HOL', 'Japan':'JAP', 'Sweden':'SUE', 'Tunisia':'TUN',
+  'Belgium':'BEL', 'Egypt':'EGI', 'Iran':'IRA', 'New Zealand':'NZE',
+  'Spain':'ESP', 'Cape Verde':'CAB', 'Saudi Arabia':'ARS', 'Uruguay':'URU',
+  'France':'FRA', 'Senegal':'SEN', 'Iraq':'IRQ', 'Norway':'NOR',
+  'Argentina':'ARG', 'Algeria':'AGL', 'Austria':'AUT', 'Jordan':'JOR',
+  'Portugal':'POR', 'DR Congo':'RDC', 'Congo DR':'RDC', 'Democratic Republic of Congo':'RDC',
+  'Uzbekistan':'UZB', 'Colombia':'COL',
+  'England':'ING', 'Croatia':'CRO', 'Ghana':'GAN', 'Panama':'PAN'
+};
 
 // ────────────────────────────────────────────────────────────
 // JOGOS DA FASE DE GRUPOS — Copa 2026 (72 jogos, idênticos à v1)
@@ -308,6 +351,7 @@ function doPost(e) {
     else if (a === 'salvarResultadoMataMata')  resultado = salvarResultadoMataMata(body);
     else if (a === 'getResultadosGruposAdmin') resultado = getResultadosGruposAdmin(body.senha);
     else if (a === 'sincronizarGruposV1')      resultado = sincronizarGruposV1(body.senha);
+    else if (a === 'sincronizarResultadosFDA') resultado = sincronizarResultadosFDA(body.senha);
     else if (a === 'getChaveamentoAdmin')      resultado = getChaveamentoAdmin(body.senha);
     else if (a === 'gerarChaveamento')         resultado = gerarChaveamento(body);
     else if (a === 'definirTerceiros')         resultado = definirTerceiros(body);
@@ -1244,6 +1288,158 @@ function sincronizarGruposV1(senha) {
   const n = r ? Object.keys(r).length : 0;
   return { ok: true, msg: 'Sincronizado com o v1: ' + n + ' resultado(s) de grupo.', total: n, disponivel: !!r };
 }
+
+// ════════════════════════════════════════════════════════════
+// SINCRONIZAÇÃO AUTOMÁTICA — football-data.org
+// Busca todos os jogos encerrados da Copa (grupos + mata-mata)
+// e grava na planilha em uma única chamada de API.
+// Requer FOOTBALL_DATA_API_KEY preenchido no topo do arquivo.
+// ════════════════════════════════════════════════════════════
+function sincronizarResultadosFDA(senha) {
+  if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
+  if (!FOOTBALL_DATA_API_KEY || FOOTBALL_DATA_API_KEY.length < 5) {
+    return { ok: false, msg: 'Chave da API não configurada. Preencha FOOTBALL_DATA_API_KEY no Code.gs e publique nova versão.' };
+  }
+
+  // ── Busca todos os jogos da Copa 2026 numa única requisição ──
+  let partidas;
+  try {
+    const resp = UrlFetchApp.fetch(
+      'https://api.football-data.org/v4/competitions/WC/matches',
+      {
+        method: 'get',
+        headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY },
+        muteHttpExceptions: true
+      }
+    );
+    const code = resp.getResponseCode();
+    if (code === 429) return { ok: false, msg: 'Limite de requisições atingido (10/min). Aguarde 1 minuto e tente novamente.' };
+    if (code === 403) return { ok: false, msg: 'Chave inválida ou sem permissão para a Copa 2026. Verifique em football-data.org.' };
+    if (code !== 200) return { ok: false, msg: 'Erro na API (HTTP ' + code + '). Verifique a chave e tente novamente.' };
+    const data = JSON.parse(resp.getContentText());
+    partidas = (data.matches || []).filter(function(m) { return m.status === 'FINISHED'; });
+  } catch (err) {
+    return { ok: false, msg: 'Erro ao acessar a API: ' + err.message };
+  }
+
+  if (!partidas.length) return { ok: true, msg: 'Nenhum resultado disponível ainda na API.', grupos: 0, mataMata: 0, ignorados: 0 };
+
+  // Converte TLA (ou nome) da football-data.org para código local do bolão
+  function localCode(team) {
+    if (!team) return null;
+    const tla = (team.tla || '').toUpperCase();
+    if (MAPA_FD[tla]) return MAPA_FD[tla];
+    const nome = team.name || team.shortName || '';
+    return MAPA_FD_NOME[nome] || null;
+  }
+
+  // ── Índice dos jogos de grupo por par de times ──
+  const idxGrupos = {};
+  JOGOS.forEach(function(j) {
+    idxGrupos[j.time1 + '|' + j.time2] = j;
+    idxGrupos[j.time2 + '|' + j.time1] = j;
+  });
+
+  // ── Índice dos jogos do mata-mata por par de times ──
+  const jogosMM = _jogosMataMata();
+  const idxMM = {};
+  jogosMM.forEach(function(j) {
+    idxMM[j.time1 + '|' + j.time2] = j;
+    idxMM[j.time2 + '|' + j.time1] = j;
+  });
+
+  // ── Carrega mapas de linhas existentes (para update vs append) ──
+  const abaG = _aba('ResultadosGrupos', ['JogoID','Gols1','Gols2','DataRegistro']);
+  const valsG = abaG.getDataRange().getValues();
+  const linhaG = {};
+  for (var i = 1; i < valsG.length; i++) if (valsG[i][0]) linhaG[String(valsG[i][0])] = i + 1;
+
+  const abaMM = _aba('ResultadosMataMata', ['JogoID','Gols1','Gols2','Vencedor','DataRegistro']);
+  const valsMM = abaMM.getDataRange().getValues();
+  const linhaMM = {};
+  for (var j = 1; j < valsMM.length; j++) if (valsMM[j][0]) linhaMM[String(valsMM[j][0])] = j + 1;
+
+  const agora = new Date().toISOString();
+  var salvosG = 0, salvosMM = 0, ignorados = 0;
+  var atualizouMM = false;
+
+  partidas.forEach(function(m) {
+    const lH = localCode(m.homeTeam);
+    const lA = localCode(m.awayTeam);
+    if (!lH || !lA) { ignorados++; return; }
+
+    const score = m.score && m.score.fullTime;
+    if (!score || score.home == null || score.away == null) return;
+
+    const stage = String(m.stage || '').toUpperCase();
+
+    if (stage === 'GROUP_STAGE') {
+      // ── Fase de grupos ──
+      const jogo = idxGrupos[lH + '|' + lA];
+      if (!jogo) { ignorados++; return; }
+
+      // Garante que g1/g2 correspondam a time1/time2 do nosso JOGOS
+      const g1 = (jogo.time1 === lH) ? score.home : score.away;
+      const g2 = (jogo.time1 === lH) ? score.away : score.home;
+      const id = String(jogo.id);
+
+      if (linhaG[id]) {
+        abaG.getRange(linhaG[id], 2, 1, 3).setValues([[g1, g2, agora]]);
+      } else {
+        abaG.appendRow([jogo.id, g1, g2, agora]);
+        linhaG[id] = abaG.getLastRow();
+      }
+      salvosG++;
+
+    } else {
+      // ── Mata-mata (qualquer fase fora do grupo) ──
+      if (!jogosMM.length) return;
+      const jogo = idxMM[lH + '|' + lA];
+      if (!jogo) { ignorados++; return; }
+
+      const g1 = (jogo.time1 === lH) ? score.home : score.away;
+      const g2 = (jogo.time1 === lH) ? score.away : score.home;
+
+      // Vencedor: pelo placar (90+ET) ou pelo campo winner da API (pênaltis)
+      var vencedor = '';
+      if (g1 > g2) { vencedor = jogo.time1; }
+      else if (g2 > g1) { vencedor = jogo.time2; }
+      else {
+        const w = m.score && m.score.winner; // 'HOME_TEAM' | 'AWAY_TEAM'
+        if (w === 'HOME_TEAM') vencedor = (jogo.time1 === lH) ? jogo.time1 : jogo.time2;
+        else if (w === 'AWAY_TEAM') vencedor = (jogo.time1 === lA) ? jogo.time1 : jogo.time2;
+      }
+      if (!vencedor) { ignorados++; return; }
+
+      const id = String(jogo.id);
+      if (linhaMM[id]) {
+        abaMM.getRange(linhaMM[id], 2, 1, 4).setValues([[g1, g2, vencedor, agora]]);
+      } else {
+        abaMM.appendRow([id, g1, g2, vencedor, agora]);
+        linhaMM[id] = abaMM.getLastRow();
+      }
+      salvosMM++;
+      atualizouMM = true;
+    }
+  });
+
+  // Atualiza chaveamento se houve novos resultados de mata-mata
+  if (atualizouMM && _autoBracketLigado()) {
+    try { atualizarChaveamento(); } catch (e) {}
+  }
+
+  // Invalida cache dos grupos do v1 para forçar recálculo na próxima leitura
+  _limparCacheGruposV1();
+
+  const partes = [];
+  if (salvosG)  partes.push(salvosG + ' jogo(s) de grupo sincronizado(s)');
+  if (salvosMM) partes.push(salvosMM + ' jogo(s) do mata-mata sincronizado(s)');
+  if (ignorados) partes.push(ignorados + ' jogo(s) sem mapeamento de time');
+  const msg = partes.length ? partes.join(' · ') + '.' : 'Nenhum resultado novo encontrado.';
+
+  return { ok: true, msg, grupos: salvosG, mataMata: salvosMM, ignorados, total: partidas.length };
+}
+
 function getResultadosMataMataAdmin(senha) {
   if (!_adminOk(senha)) return { ok: false, msg: 'Acesso negado.' };
   return { ok: true, resultados: _mapResultadosMataMata() };
