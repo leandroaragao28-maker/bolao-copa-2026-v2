@@ -32,7 +32,7 @@ const V1_API_URL = 'https://script.google.com/macros/s/AKfycbyZEHNn7NmtJk1IMUfiK
 
 // Chave da API football-data.org — cadastro gratuito em https://www.football-data.org/client/register
 // Após criar a conta, cole aqui a chave recebida por e-mail (campo "Authentication Token").
-const FOOTBALL_DATA_API_KEY = '';   // ← cole sua chave aqui
+const FOOTBALL_DATA_API_KEY = '3c6456473991412c9e686ca3e70bca0d';
 
 const VALOR_INSCRICAO = 50;   // R$ — nova taxa da v2 (fase eliminatória)
 const ANTECEDENCIA_MS = 5 * 60 * 1000; // palpite trava 5 min antes do apito
