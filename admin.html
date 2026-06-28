@@ -294,11 +294,10 @@ function renderChaveamento(d) {
   const status = document.getElementById('chaveStatus');
   const box = document.getElementById('terceirosBox');
   if (!d.todosCompletos) {
-    status.innerHTML = '⏳ <strong>Aguardando os 12 grupos terminarem.</strong> Você já pode clicar em <em>Gerar/atualizar</em> para criar os 8 jogos determinísticos (Vencedor × Vice) cujos grupos já fecharam. Os 8 jogos com "melhor terceiro" liberam quando todos os grupos acabarem.';
-    box.innerHTML = '';
-    return;
+    status.innerHTML = '⚠️ <strong>Nem todos os grupos terminaram.</strong> Você já pode alocar os terceiros dos grupos já encerrados.';
+  } else {
+    status.innerHTML = '✅ <strong>Grupos completos.</strong> Aloque os 8 melhores terceiros e salve — os 32-avos serão criados/atualizados.';
   }
-  status.innerHTML = '✅ <strong>Grupos completos.</strong> Aloque os 8 melhores terceiros e salve — os 32-avos serão criados/atualizados.';
   const thirds = d.melhoresTerceiros || [];
   let html = '<div style="margin:.6rem 0;font-size:.8rem;background:var(--cinza-fundo);padding:.5rem .7rem;border-radius:8px;"><strong>8 melhores terceiros:</strong> ' +
     thirds.map(t => `<span style="white-space:nowrap;">${t.grupo}=${nomeTime(t.code)}</span>`).join(' · ') + '</div>';
